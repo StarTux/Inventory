@@ -1,0 +1,27 @@
+main: com.cavetale.inventory.InventoryPlugin
+
+name: Inventory
+version: 0.1
+description: Store player inventories in a database
+api-version: 1.13
+
+author: StarTux
+website: https://github.com/StarTux/Inventory
+
+depend: [SQL]
+softdepend: []
+
+commands:
+
+  inventory:
+    aliases: []
+    description: Inventory Command
+    permission: inventory.inventory
+    usage: |-
+      /inventory reload - Reload config
+
+permissions:
+
+  inventory.inventory:
+    description: Use /inventory
+    default: op

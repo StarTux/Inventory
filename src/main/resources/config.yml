@@ -1,0 +1,3 @@
+# Should player inventories be stored when a player quits!
+Store: false
+DebugMode: false
