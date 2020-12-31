@@ -65,16 +65,18 @@ public final class InventoryPlugin extends JavaPlugin {
     }
 
     public void restoreInventory(Player player) {
-        database.find(SQLInventory.class).findUniqueAsync(row -> {
-                if (row == null) {
-                    if (debug) getLogger().info("Inventory not found: " + player.getName());
-                }
-                Inventory inventory = Json.deserialize(row.json, Inventory.class, () -> null);
-                if (inventory == null) {
-                    if (debug) getLogger().warning("Inventory invalid: " + player.getName() + ": " + row.json);
-                }
-                inventory.restore(player);
-                if (debug) getLogger().info("Inventory restored: " + player.getName());
-            });
+        database.find(SQLInventory.class)
+            .eq("uuid", player.getUniqueId())
+            .findUniqueAsync(row -> {
+                    if (row == null) {
+                        if (debug) getLogger().info("Inventory not found: " + player.getName());
+                    }
+                    Inventory inventory = Json.deserialize(row.json, Inventory.class, () -> null);
+                    if (inventory == null) {
+                        if (debug) getLogger().warning("Inventory invalid: " + player.getName() + ": " + row.json);
+                    }
+                    inventory.restore(player);
+                    if (debug) getLogger().info("Inventory restored: " + player.getName());
+                });
     }
 }
