@@ -15,7 +15,7 @@ public final class Inventory {
     public void store(Player player) {
         inventoryItems.clear();
         PlayerInventory playerInventory = player.getInventory();
-        for (ItemStack itemStack : playerInventory){
+        for (ItemStack itemStack : playerInventory) {
             inventoryItems.add(Items.serialize(itemStack));
         }
     }

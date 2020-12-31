@@ -2,14 +2,12 @@ package com.cavetale.inventory;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import java.io.IOException;
 import java.util.function.Supplier;
-import lombok.RequiredArgsConstructor;
-import org.bukkit.plugin.java.JavaPlugin;
 
-@RequiredArgsConstructor
 public final class Json {
     public static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
+
+    private Json() { }
 
     public static String serialize(Object obj) {
         return GSON.toJson(obj);
