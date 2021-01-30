@@ -22,6 +22,7 @@ public final class Inventory {
 
     public void restore(Player player) {
         PlayerInventory playerInventory = player.getInventory();
+        List<ItemStack> oldItems = new ArrayList<>();
         for (int i = 0; i < inventoryItems.size(); i += 1) {
             ItemStack itemStack = Items.deserialize(inventoryItems.get(i));
             if (itemStack != null) {
@@ -31,7 +32,14 @@ public final class Inventory {
                 default: break;
                 }
             }
+            ItemStack oldItem = playerInventory.getItem(i);
+            if (oldItem != null && oldItem.getAmount() > 0) oldItems.add(oldItem);
             playerInventory.setItem(i, itemStack);
+        }
+        for (ItemStack oldItem : oldItems) {
+            for (ItemStack drop : player.getInventory().addItem(oldItem).values()) {
+                player.getWorld().dropItem(player.getEyeLocation(), oldItem).setPickupDelay(0);
+            }
         }
     }
 }
