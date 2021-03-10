@@ -8,7 +8,7 @@ api-version: 1.13
 author: StarTux
 website: https://github.com/StarTux/Inventory
 
-depend: [SQL]
+depend: [Core, SQL, Mytems]
 softdepend: []
 
 commands:
@@ -20,8 +20,19 @@ commands:
     usage: |-
       /inventory reload - Reload config
 
+  stash:
+    aliases: [st]
+    description: Open your stash
+    permission: inventory.stash
+    usage: |-
+      /stash - Open your stash
+
 permissions:
 
   inventory.inventory:
     description: Use /inventory
+    default: op
+
+  inventory.stash:
+    description: Use /stash
     default: op

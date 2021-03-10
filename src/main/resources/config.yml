@@ -1,3 +1,7 @@
-# Should player inventories be stored when a player quits!
+# Store inventory when player quits
 Store: false
-DebugMode: false
+# Remove stored items from inventory
+Remove: false
+# Restore inventory when player joins
+Restore: false
+Debug: false

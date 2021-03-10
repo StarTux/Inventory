@@ -1,91 +1,43 @@
 package com.cavetale.inventory;
 
+import com.cavetale.inventory.gui.Gui;
+import com.cavetale.inventory.sql.SQLStash;
 import com.winthier.sql.SQLDatabase;
 import lombok.Getter;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class InventoryPlugin extends JavaPlugin {
     @Getter private static InventoryPlugin instance;
     InventoryCommand inventoryCommand = new InventoryCommand(this);
+    StashCommand stashCommand = new StashCommand(this);
     EventListener eventListener = new EventListener(this);
     SQLDatabase database = new SQLDatabase(this);
-    boolean doStore;
-    boolean debug;
+    final Settings settings = new Settings();
 
     @Override
     public void onEnable() {
         instance = this;
-        reloadConfig();
-        saveDefaultConfig();
-        loadConf();
+        loadSettings();
         inventoryCommand.enable();
+        stashCommand.enable();
         eventListener.enable();
-        database.registerTables(SQLInventory.class);
-        database.createAllTables();
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            enter(player);
+        database.registerTables(SQLStash.class);
+        if (!database.createAllTables()) {
+            getLogger().warning("Database creation failed!");
+            setEnabled(false);
+            return;
         }
+        Gui.enable(this);
     }
 
     @Override
     public void onDisable() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            exit(player);
-        }
+        Gui.disable(this);
     }
 
-    public void enter(Player player) {
-    }
-
-    public void exit(Player player) {
-        if (doStore) {
-            storeInventory(player);
-        }
-    }
-
-    void loadConf() {
-        doStore = getConfig().getBoolean("Store");
-        debug = getConfig().getBoolean("DebugMode");
-        getLogger().info("Store=" + doStore + " DebugMode=" + debug);
-    }
-
-    public void storeInventory(Player player) {
-        Inventory inventory = new Inventory();
-        inventory.store(player);
-        SQLInventory row = new SQLInventory(player.getUniqueId(), Json.serialize(inventory));
-        if (isEnabled()) {
-            database.saveAsync(row, unused -> {
-                    if (debug) getLogger().info("Inventory stored: " + player.getName());
-                });
-        } else {
-            database.save(row);
-        }
-    }
-
-    public void restoreInventory(Player player, Runnable callback) {
-        database.find(SQLInventory.class)
-            .eq("uuid", player.getUniqueId())
-            .findUniqueAsync(row -> {
-                    if (row == null) {
-                        if (debug) getLogger().info("Inventory not found: " + player.getName());
-                        if (callback != null) callback.run();
-                        return;
-                    }
-                    Inventory inventory = Json.deserialize(row.json, Inventory.class, () -> null);
-                    if (inventory == null) {
-                        if (debug) getLogger().warning("Inventory invalid: " + player.getName() + ": " + row.json);
-                        if (callback != null) callback.run();
-                        return;
-                    }
-                    inventory.restore(player);
-                    if (debug) getLogger().info("Inventory restored: " + player.getName());
-                    if (callback != null) callback.run();
-                });
-    }
-
-    public void restoreInventory(Player player) {
-        restoreInventory(player, null);
+    void loadSettings() {
+        saveDefaultConfig();
+        reloadConfig();
+        settings.load(getConfig());
     }
 }

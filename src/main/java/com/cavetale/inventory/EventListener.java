@@ -18,11 +18,9 @@ public final class EventListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onPlayerJoin(PlayerJoinEvent event) {
-        plugin.enter(event.getPlayer());
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     void onPlayerQuit(PlayerQuitEvent event) {
-        plugin.exit(event.getPlayer());
     }
 }
