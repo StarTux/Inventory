@@ -1,5 +1,6 @@
 package com.cavetale.inventory.sql;
 
+import com.cavetale.inventory.util.Json;
 import java.util.Date;
 import java.util.UUID;
 import javax.persistence.Column;
@@ -17,6 +18,8 @@ public final class SQLStash {
     String json;
     @Column(nullable = false, columnDefinition = "INT(3)")
     private int itemCount;
+    @Column(nullable = false, columnDefinition = "INT(11) DEFAULT 0")
+    private int version;
     @Column(nullable = false, columnDefinition = "TIMESTAMP DEFAULT NOW()")
     private Date access;
 
@@ -28,5 +31,10 @@ public final class SQLStash {
 
     public void setAccessNow() {
         access = new Date();
+    }
+
+    @Override
+    public String toString() {
+        return Json.serialize(this);
     }
 }

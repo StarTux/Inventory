@@ -6,8 +6,10 @@ import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.util.Items;
 import com.cavetale.inventory.util.Json;
 import com.cavetale.mytems.Mytems;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -19,9 +21,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-// TODO: Improve cross-server synchronization. An extremely unlikely
-// turn of events could open the stash on one server while it's still
-// open and not saved on another.
 @RequiredArgsConstructor
 public final class StashCommand implements CommandExecutor {
     private final InventoryPlugin plugin;
@@ -39,7 +38,7 @@ public final class StashCommand implements CommandExecutor {
         if (args.length != 0) return false;
         Player player = (Player) sender;
         if (stashOf(player) != null) return true;
-        openStash(player);
+        plugin.database.scheduleAsyncTask(() -> openStashAsync(player));
         return true;
     }
 
@@ -49,19 +48,62 @@ public final class StashCommand implements CommandExecutor {
         return gui;
     }
 
-    private void openStash(Player player) {
+    private void openStashAsync(Player player) {
         SQLStash found = plugin.database.find(SQLStash.class).eq("owner", player.getUniqueId()).findUnique();
-        SQLStash row = found != null ? found : new SQLStash(player.getUniqueId());
+        SQLStash row;
+        if (found != null) {
+            row = found;
+        } else {
+            row = new SQLStash(player.getUniqueId());
+            try {
+                plugin.database.insert(row);
+            } catch (Exception e) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                        player.sendMessage(ChatColor.RED + "Your stash is unavailable. Please try again later.");
+                    });
+                throw new IllegalStateException(row.toString(), e);
+            }
+            if (row.getId() == null) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                        player.sendMessage(ChatColor.RED + "Your stash is unavailable. Please try again later.");
+                    });
+                throw new IllegalStateException("failed to save: " + row);
+            }
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> openStash(player, row));
+    }
+
+    /**
+     * Called by openStash(Player).
+     */
+    private void openStash(Player player, SQLStash row) {
+        InventoryStorage inventoryStorage;
+        if (row.getJson() != null) {
+            // If the row contains an inventory, we need to clear the
+            // row and "lock" it.
+            inventoryStorage = Json.deserialize(row.getJson(), InventoryStorage.class, () -> null);
+            row.setAccessNow();
+            row.setJson(null);
+            row.setItemCount(0);
+            boolean success = plugin.database.update(SQLStash.class)
+                .row(row)
+                .update("access", "item_count", "json")
+                .atomic("version", row.getVersion() + 1)
+                .sync();
+            if (!success) {
+                player.sendMessage(ChatColor.RED + "Your stash is unavailable. Please try again later.");
+                throw new IllegalStateException("atomic update failed: " + row);
+            }
+        } else {
+            inventoryStorage = null;
+        }
         Gui gui = new Gui(plugin, Gui.Type.STASH)
             .title("Stash")
             .size(6 * 9);
         gui.setEditable(true);
-        if (row.getJson() != null) {
-            InventoryStorage inventoryStorage = Json.deserialize(row.getJson(), InventoryStorage.class, () -> null);
-            if (inventoryStorage != null) {
-                List<ItemStack> drops = inventoryStorage.restore(gui.getInventory(), player.getName());
-                Items.give(player, drops);
-            }
+        if (inventoryStorage != null) {
+            List<ItemStack> drops = inventoryStorage.restore(gui.getInventory(), player.getName());
+            Items.give(player, drops);
         }
         gui.onClose(event -> onClose(player, row, gui));
         gui.open(player);
@@ -83,11 +125,28 @@ public final class StashCommand implements CommandExecutor {
         row.setJson(Json.serialize(inventoryStorage));
         row.setAccessNow();
         row.setItemCount(inventoryStorage.getCount());
+        boolean success = false;
         try {
-            plugin.database.save(row);
+            success = plugin.database.update(SQLStash.class)
+                .row(row)
+                .update("access", "item_count", "json")
+                .atomic("version", row.getVersion() + 1)
+                .sync();
         } catch (Exception e) {
-            plugin.getLogger().warning(player.getName() + ": Could not save stash: " + inventoryStorage);
+            success = false;
+            plugin.getLogger().warning(player.getName() + ": Saving failed. Returning: " + inventoryStorage);
             e.printStackTrace();
+        }
+        if (!success) {
+            player.sendMessage(ChatColor.RED + "Your stash is unavailable. Please try again later.");
+            List<ItemStack> list = new ArrayList<>();
+            for (int i = 0; i < gui.getInventory().getSize(); i += 1) {
+                ItemStack itemStack = gui.getInventory().getItem(i);
+                if (itemStack == null || itemStack.getAmount() == 0) continue;
+                list.add(itemStack);
+                gui.getInventory().setItem(i, null);
+            }
+            Items.give(player, list);
         }
         gui.getInventory().clear();
         player.playSound(player.getLocation(), Sound.BLOCK_ENDER_CHEST_CLOSE, SoundCategory.MASTER, 0.75f, 2.0f);
