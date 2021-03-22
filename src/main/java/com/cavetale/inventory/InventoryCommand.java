@@ -39,7 +39,7 @@ public final class InventoryCommand implements TabExecutor {
         backupNode.addChild("list").arguments("<player>")
             .description("List player inventory backups")
             .senderCaller(this::backupList);
-        backupNode.addChild("restore").arguments("<id> <player>")
+        backupNode.addChild("restore").arguments("<id> <player> [ender]")
             .description("Restore player inventory")
             .senderCaller(this::backupRestore);
         backupNode.addChild("open").arguments("<id> [ender]")
@@ -141,9 +141,10 @@ public final class InventoryCommand implements TabExecutor {
     }
 
     boolean backupRestore(CommandSender sender, String[] args) {
-        if (args.length != 2) return false;
+        if (args.length != 2 && args.length != 3) return false;
         String idString = args[0];
         String playerName = args[1];
+        final String enderString = args.length >= 3 ? args[2] : null;
         final int id;
         try {
             id = Integer.parseInt(idString);
@@ -153,6 +154,9 @@ public final class InventoryCommand implements TabExecutor {
         Player target = Bukkit.getPlayerExact(playerName);
         if (target == null) {
             throw new CommandWarn("Player not found: " + playerName);
+        }
+        if (enderString != null && !enderString.equals("ender")) {
+            throw new CommandWarn("Invalid ender arg: " + enderString);
         }
         plugin.getDatabase().find(SQLBackup.class)
             .eq("id", id)
@@ -170,12 +174,19 @@ public final class InventoryCommand implements TabExecutor {
                                        .append(Component.text(" " + row.getCreated()).color(white)));
                     SQLBackup.Tag tag = row.deserialize();
                     List<ItemStack> drops = new ArrayList<>();
-                    drops.addAll(tag.getInventory().restore(target.getInventory(), target.getName()));
-                    drops.addAll(tag.getEnderChest().restore(target.getEnderChest(), target.getName()));
-                    Items.give(target, drops);
-                    sender.sendMessage(Component.text("Returned to " + target.getName() + ": "
-                                                      + row.getItemCount() + " items, "
-                                                      + drops.size() + " drops").color(yellow));
+                    if (enderString == null) {
+                        drops.addAll(tag.getInventory().restore(target.getInventory(), target.getName()));
+                        Items.give(target, drops);
+                        sender.sendMessage(Component.text("Returned inventory to " + target.getName() + ": "
+                                                          + tag.getInventory().getCount() + " items, "
+                                                          + drops.size() + " drops").color(yellow));
+                    } else {
+                        drops.addAll(tag.getEnderChest().restore(target.getEnderChest(), target.getName()));
+                        Items.give(target, drops);
+                        sender.sendMessage(Component.text("Returned ender chest to " + target.getName() + ": "
+                                                          + tag.getEnderChest().getCount() + " items, "
+                                                          + drops.size() + " drops").color(yellow));
+                    }
                 });
         return true;
     }

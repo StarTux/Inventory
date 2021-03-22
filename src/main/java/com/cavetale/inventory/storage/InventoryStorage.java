@@ -60,7 +60,7 @@ public final class InventoryStorage {
             ItemStack itemStack = inventory.getItem(slot);
             if (itemStack == null || itemStack.getAmount() == 0) continue;
             items.add(ItemStorage.of(slot, itemStack));
-            count += 1;
+            count += itemStack.getAmount();
         }
     }
 
