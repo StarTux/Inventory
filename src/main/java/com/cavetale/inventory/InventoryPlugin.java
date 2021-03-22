@@ -1,18 +1,20 @@
 package com.cavetale.inventory;
 
 import com.cavetale.inventory.gui.Gui;
+import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLStash;
 import com.winthier.sql.SQLDatabase;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
+@Getter
 public final class InventoryPlugin extends JavaPlugin {
     @Getter private static InventoryPlugin instance;
-    InventoryCommand inventoryCommand = new InventoryCommand(this);
-    StashCommand stashCommand = new StashCommand(this);
-    EventListener eventListener = new EventListener(this);
-    SQLDatabase database = new SQLDatabase(this);
-    final Settings settings = new Settings();
+    protected InventoryCommand inventoryCommand = new InventoryCommand(this);
+    protected StashCommand stashCommand = new StashCommand(this);
+    protected EventListener eventListener = new EventListener(this);
+    protected SQLDatabase database = new SQLDatabase(this);
+    protected final Settings settings = new Settings();
 
     @Override
     public void onEnable() {
@@ -21,7 +23,7 @@ public final class InventoryPlugin extends JavaPlugin {
         inventoryCommand.enable();
         stashCommand.enable();
         eventListener.enable();
-        database.registerTables(SQLStash.class);
+        database.registerTables(SQLStash.class, SQLBackup.class);
         if (!database.createAllTables()) {
             getLogger().warning("Database creation failed!");
             setEnabled(false);

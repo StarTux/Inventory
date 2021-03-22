@@ -83,10 +83,18 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- Core -->
+    <!-- Mytems -->
     <dependency>
       <groupId>com.cavetale.mytems</groupId>
       <artifactId>mytems</artifactId>
+      <version>0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- PlayerCache -->
+    <dependency>
+      <groupId>com.winthier.playercache</groupId>
+      <artifactId>playercache</artifactId>
       <version>0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>

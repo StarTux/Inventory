@@ -4,6 +4,7 @@ import com.cavetale.inventory.InventoryPlugin;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Data;
+import org.bukkit.Bukkit;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
@@ -61,5 +62,12 @@ public final class InventoryStorage {
             items.add(ItemStorage.of(slot, itemStack));
             count += 1;
         }
+    }
+
+    public Inventory toInventory() {
+        int invSize = ((size - 1) / 9 + 1) * 9;
+        Inventory inventory = Bukkit.createInventory(null, invSize);
+        restore(inventory, "toInventory");
+        return inventory;
     }
 }
