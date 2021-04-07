@@ -152,7 +152,7 @@ public final class Gui implements InventoryHolder {
 
     void onInventoryClose(InventoryCloseEvent event) {
         if (onClose != null) {
-            Bukkit.getScheduler().runTask(plugin, () -> onClose.accept(event));
+            onClose.accept(event);
         }
     }
 

@@ -35,6 +35,8 @@ public final class InventoryPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         Gui.disable(this);
+        database.waitForAsyncTask();
+        database.close();
     }
 
     void loadSettings() {
