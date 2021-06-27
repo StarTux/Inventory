@@ -85,12 +85,12 @@ public final class StashCommand implements CommandExecutor {
             row.setAccessNow();
             row.setJson(null);
             row.setItemCount(0);
-            boolean success = plugin.database.update(SQLStash.class)
+            int success = plugin.database.update(SQLStash.class)
                 .row(row)
                 .update("access", "item_count", "json")
                 .atomic("version", row.getVersion() + 1)
                 .sync();
-            if (!success) {
+            if (success <= 0) {
                 player.sendMessage(ChatColor.RED + "Your stash is unavailable. Please try again later.");
                 throw new IllegalStateException("atomic update failed: " + row);
             }
@@ -125,7 +125,7 @@ public final class StashCommand implements CommandExecutor {
         row.setJson(Json.serialize(inventoryStorage));
         row.setAccessNow();
         row.setItemCount(inventoryStorage.getCount());
-        boolean success = false;
+        int success = 0;
         try {
             success = plugin.database.update(SQLStash.class)
                 .row(row)
@@ -133,11 +133,11 @@ public final class StashCommand implements CommandExecutor {
                 .atomic("version", row.getVersion() + 1)
                 .sync();
         } catch (Exception e) {
-            success = false;
+            success = 0;
             plugin.getLogger().warning(player.getName() + ": Saving failed. Returning: " + inventoryStorage);
             e.printStackTrace();
         }
-        if (!success) {
+        if (success <= 0) {
             player.sendMessage(ChatColor.RED + "Your stash is unavailable. Please try again later.");
             List<ItemStack> list = new ArrayList<>();
             for (int i = 0; i < gui.getInventory().getSize(); i += 1) {
