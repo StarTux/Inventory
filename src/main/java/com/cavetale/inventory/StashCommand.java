@@ -9,6 +9,7 @@ import com.cavetale.mytems.Mytems;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -98,7 +99,7 @@ public final class StashCommand implements CommandExecutor {
             inventoryStorage = null;
         }
         Gui gui = new Gui(plugin, Gui.Type.STASH)
-            .title("Stash")
+            .title(Component.text("Stash"))
             .size(6 * 9);
         gui.setEditable(true);
         if (inventoryStorage != null) {

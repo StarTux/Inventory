@@ -2,9 +2,12 @@ package com.cavetale.inventory;
 
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.sql.SQLBackup;
+import com.cavetale.inventory.sql.SQLStash;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.util.Items;
+import com.cavetale.inventory.util.Json;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +36,9 @@ public final class InventoryCommand implements TabExecutor {
         rootNode = new CommandNode("inventory");
         rootNode.addChild("reload").denyTabCompletion()
             .senderCaller(this::reload);
+        rootNode.addChild("stash").arguments("<player>")
+            .description("Peek in a player's stash (copy)")
+            .playerCaller(this::stash);
         // Backup
         CommandNode backupNode = rootNode.addChild("backup")
             .description("Backup commands");
@@ -188,6 +194,31 @@ public final class InventoryCommand implements TabExecutor {
                                                           + drops.size() + " drops").color(yellow));
                     }
                 });
+        return true;
+    }
+
+    boolean stash(Player sender, String[] args) {
+        if (args.length != 1) return false;
+        PlayerCache player = PlayerCache.forName(args[0]);
+        if (player == null) {
+            throw new CommandWarn("Player not found: " + args[0]);
+        }
+        SQLStash stash = plugin.database.find(SQLStash.class).eq("owner", player.uuid).findUnique();
+        if (stash == null || stash.getJson() == null) {
+            throw new CommandWarn(player.name + " has no stash!");
+        }
+        InventoryStorage inventoryStorage = Json.deserialize(stash.getJson(), InventoryStorage.class, () -> null);
+        if (inventoryStorage == null) {
+            throw new CommandWarn("Something went wrong! See console.");
+        }
+        Gui gui = new Gui(plugin, Gui.Type.STASH)
+            .title(Component.text("Stash of " + player.name + " (copy)", red))
+            .size(inventoryStorage.getSize());
+        gui.setEditable(true);
+        List<ItemStack> drops = inventoryStorage.restore(gui.getInventory(), player.getName());
+        // ignoring drops here...
+        gui.open(sender);
+        sender.sendMessage(Component.text("Opening copy of stash of " + player.name, yellow));
         return true;
     }
 }

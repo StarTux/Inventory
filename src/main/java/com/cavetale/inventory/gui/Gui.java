@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -17,6 +18,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.InventoryView;
@@ -33,7 +35,7 @@ public final class Gui implements InventoryHolder {
     private Consumer<InventoryOpenEvent> onOpen = null;
     @Getter @Setter private boolean editable = false;
     @Getter private int size = 3 * 9;
-    @Getter private String title = "";
+    @Getter private Component title = Component.empty();
     boolean locked = false;
 
     @RequiredArgsConstructor @AllArgsConstructor
@@ -52,7 +54,7 @@ public final class Gui implements InventoryHolder {
         this.type = type;
     }
 
-    public Gui title(String newTitle) {
+    public Gui title(Component newTitle) {
         title = newTitle;
         return this;
     }
@@ -73,7 +75,6 @@ public final class Gui implements InventoryHolder {
 
     public Inventory getInventory() {
         if (inventory == null) {
-            if (title == null) title = "";
             inventory = Bukkit.getServer().createInventory(this, size, title);
             for (int i = 0; i < size; i += 1) {
                 Slot slot = slots.get(i);
@@ -183,7 +184,10 @@ public final class Gui implements InventoryHolder {
         }
     }
 
+    @RequiredArgsConstructor
     public static final class EventListener implements Listener {
+        private final JavaPlugin plugin;
+
         @EventHandler(ignoreCancelled = false, priority = EventPriority.LOWEST)
         void onInventoryOpen(final InventoryOpenEvent event) {
             if (event.getInventory().getHolder() instanceof Gui) {
@@ -215,6 +219,13 @@ public final class Gui implements InventoryHolder {
                     .onInventoryDrag(event);
             }
         }
+
+        @EventHandler(priority = EventPriority.NORMAL)
+        void onPluginDisable(PluginDisableEvent event) {
+            if (event.getPlugin() == plugin) {
+                Gui.disable(plugin);
+            }
+        }
     }
 
     public static Gui of(Player player) {
@@ -229,7 +240,7 @@ public final class Gui implements InventoryHolder {
     }
 
     public static void enable(JavaPlugin plugin) {
-        Bukkit.getPluginManager().registerEvents(new EventListener(), plugin);
+        Bukkit.getPluginManager().registerEvents(new EventListener(plugin), plugin);
     }
 
     public static void disable(JavaPlugin plugin) {
