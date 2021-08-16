@@ -13,6 +13,7 @@ public final class InventoryPlugin extends JavaPlugin {
     @Getter private static InventoryPlugin instance;
     protected InventoryCommand inventoryCommand = new InventoryCommand(this);
     protected StashCommand stashCommand = new StashCommand(this);
+    protected OpenStashCommand openStashCommand = new OpenStashCommand(this);
     protected SQLDatabase database = new SQLDatabase(this);
     protected final Settings settings = new Settings();
 
@@ -25,6 +26,7 @@ public final class InventoryPlugin extends JavaPlugin {
         loadSettings();
         inventoryCommand.enable();
         stashCommand.enable();
+        openStashCommand.enable();
         database.registerTables(SQLStash.class, SQLBackup.class);
         if (!database.createAllTables()) {
             getLogger().warning("Database creation failed!");

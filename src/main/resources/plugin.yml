@@ -27,6 +27,13 @@ commands:
     usage: |-
       /stash - Open your stash
 
+  openstash:
+    aliases: []
+    description: Open a player stash
+    permission: inventory.openstash
+    usage: |-
+      /openstash <player> - Open a player stash
+
 permissions:
 
   inventory.inventory:
