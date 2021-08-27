@@ -1,5 +1,6 @@
 package com.cavetale.inventory;
 
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.sql.SQLStash;
 import com.cavetale.inventory.storage.InventoryStorage;
@@ -39,6 +40,9 @@ public final class StashCommand implements CommandExecutor {
         if (args.length != 0) return false;
         Player player = (Player) sender;
         if (stashOf(player) != null) return true;
+        if (!PluginPlayerEvent.Name.OPEN_STASH.cancellable(plugin, player).call()) {
+            return true;
+        }
         plugin.database.scheduleAsyncTask(() -> openStashAsync(player));
         return true;
     }
