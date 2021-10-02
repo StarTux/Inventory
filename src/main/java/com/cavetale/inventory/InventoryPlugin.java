@@ -4,6 +4,8 @@ import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLStash;
 import com.winthier.sql.SQLDatabase;
+import java.time.Duration;
+import java.util.Date;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -29,10 +31,12 @@ public final class InventoryPlugin extends JavaPlugin {
         openStashCommand.enable();
         database.registerTables(SQLStash.class, SQLBackup.class);
         if (!database.createAllTables()) {
-            getLogger().warning("Database creation failed!");
-            setEnabled(false);
-            return;
+            throw new IllegalStateException("Database creation failed!");
         }
+        Date then = new Date(System.currentTimeMillis() - Duration.ofDays(90).toMillis());
+        database.find(SQLBackup.class)
+            .lt("created", then)
+            .deleteAsync(count -> getLogger().info("" + count + " backups deleted older than " + then));
         Gui.enable(this);
     }
 
