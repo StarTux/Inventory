@@ -3,7 +3,6 @@ package com.cavetale.inventory.storage;
 import com.cavetale.inventory.util.Items;
 import com.cavetale.inventory.util.Json;
 import com.cavetale.mytems.Mytems;
-import javax.annotation.Nullable;
 import lombok.Data;
 import lombok.NonNull;
 import org.bukkit.Material;
@@ -17,7 +16,7 @@ public final class ItemStorage {
     protected String mytems;
     protected Integer amount;
 
-    public static ItemStorage of(final int slot, @Nullable final ItemStack itemStack) {
+    public static ItemStorage of(final int slot, final ItemStack itemStack) {
         ItemStorage result = new ItemStorage();
         if (itemStack != null) result.store(itemStack);
         result.slot = slot;

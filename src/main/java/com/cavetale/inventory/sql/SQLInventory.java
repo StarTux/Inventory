@@ -9,6 +9,9 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 
+/**
+ * Unused!
+ */
 @Getter @Setter @Table(name = "inventories")
 public final class SQLInventory {
     @Id
