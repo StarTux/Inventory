@@ -1,8 +1,9 @@
 package com.cavetale.inventory.storage;
 
 import com.cavetale.inventory.util.Items;
-import com.cavetale.inventory.util.Json;
+import com.cavetale.mytems.MytemTag;
 import com.cavetale.mytems.Mytems;
+import com.cavetale.mytems.util.Json;
 import lombok.Data;
 import lombok.NonNull;
 import org.bukkit.Material;
@@ -53,7 +54,11 @@ public final class ItemStorage {
         amount = itemStack.getAmount() != 1 ? itemStack.getAmount() : null;
         Mytems key = Mytems.forItem(itemStack);
         if (key != null) {
-            mytems = key.serializeItem(itemStack);
+            MytemTag tag = key.getMytem().serializeTag(itemStack);
+            if (tag != null) tag.setAmount(null);
+            mytems = tag != null && !tag.isDismissable()
+                ? key.id + Json.serialize(tag)
+                : key.id;
         } else if (!itemStack.isSimilar(new ItemStack(itemStack.getType()))) {
             base64 = Items.serialize(itemStack);
             bukkit = itemStack.getType().name().toLowerCase();
