@@ -42,8 +42,6 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
 
     @Override
     protected void onEnable() {
-        rootNode.addChild("reload").denyTabCompletion()
-            .senderCaller(this::reload);
         rootNode.addChild("stash").arguments("<player>")
             .description("Peek in a player's stash (copy)")
             .playerCaller(this::stash);
@@ -70,13 +68,6 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                         CommandArgCompleter.REPEAT)
             .description("Create an inventory backup")
             .senderCaller(this::backupCreate);
-    }
-
-    protected boolean reload(CommandSender sender, String[] args) {
-        if (args.length != 0) return false;
-        plugin.loadSettings();
-        sender.sendMessage("Inventory config reloaded");
-        return true;
     }
 
     protected boolean backupList(CommandSender sender, String[] args) {

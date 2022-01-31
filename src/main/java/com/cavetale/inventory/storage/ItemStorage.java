@@ -1,8 +1,8 @@
 package com.cavetale.inventory.storage;
 
 import com.cavetale.inventory.util.Items;
-import com.cavetale.mytems.MytemTag;
 import com.cavetale.mytems.Mytems;
+import com.cavetale.mytems.item.farawaymap.FarawayMapTag;
 import com.cavetale.mytems.util.Json;
 import lombok.Data;
 import lombok.NonNull;
@@ -54,11 +54,11 @@ public final class ItemStorage {
         amount = itemStack.getAmount() != 1 ? itemStack.getAmount() : null;
         Mytems key = Mytems.forItem(itemStack);
         if (key != null) {
-            MytemTag tag = key.getMytem().serializeTag(itemStack);
-            if (tag != null) tag.setAmount(null);
-            mytems = tag != null && !tag.isDismissable()
-                ? key.id + Json.serialize(tag)
-                : key.id;
+            mytems = key.serializeSingleItem(itemStack);
+        } else if (itemStack.getType() == Material.FILLED_MAP) {
+            FarawayMapTag tag = new FarawayMapTag();
+            tag.loadMap(itemStack);
+            mytems = Mytems.FARAWAY_MAP.serializeWithTag(tag);
         } else if (!itemStack.isSimilar(new ItemStack(itemStack.getType()))) {
             base64 = Items.serialize(itemStack);
             bukkit = itemStack.getType().name().toLowerCase();
@@ -69,5 +69,9 @@ public final class ItemStorage {
 
     public String toString() {
         return Json.serialize(this);
+    }
+
+    public int getAmount() {
+        return amount != null ? amount : 1;
     }
 }

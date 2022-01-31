@@ -1,7 +1,0 @@
-# Store inventory when player quits
-Store: false
-# Remove stored items from inventory
-Remove: false
-# Restore inventory when player joins
-Restore: false
-Debug: false

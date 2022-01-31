@@ -22,6 +22,10 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import static net.kyori.adventure.text.Component.join;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 @RequiredArgsConstructor
 public final class StashCommand implements CommandExecutor {
@@ -103,7 +107,7 @@ public final class StashCommand implements CommandExecutor {
             inventoryStorage = null;
         }
         Gui gui = new Gui(plugin, Gui.Type.STASH)
-            .title(Component.text("Stash"))
+            .title(text("Stash"))
             .size(6 * 9);
         gui.setEditable(true);
         if (inventoryStorage != null) {
@@ -118,12 +122,15 @@ public final class StashCommand implements CommandExecutor {
     private void onClose(Player player, SQLStash row, Gui gui) {
         for (int i = 0; i < gui.getInventory().getSize(); i += 1) {
             ItemStack itemStack = gui.getInventory().getItem(i);
-            if (itemStack == null || itemStack.getAmount() == 0) continue;
+            if (itemStack == null || itemStack.getType() == Material.AIR) continue;
             if (Mytems.forItem(itemStack) != null) continue;
-            if (Tag.SHULKER_BOXES.isTagged(itemStack.getType()) || itemStack.getType() == Material.FILLED_MAP) {
+            if (Tag.SHULKER_BOXES.isTagged(itemStack.getType())) {
                 gui.getInventory().setItem(i, null);
                 Items.give(player, itemStack);
-                player.sendMessage(ChatColor.RED + "You cannot stash " + itemStack.getI18NDisplayName() + "!");
+                player.sendMessage(join(noSeparators(),
+                                        text("You cannot stash "),
+                                        Component.translatable(itemStack),
+                                        text("!")).color(RED));
             }
         }
         InventoryStorage inventoryStorage = InventoryStorage.of(gui.getInventory());
@@ -147,7 +154,7 @@ public final class StashCommand implements CommandExecutor {
             List<ItemStack> list = new ArrayList<>();
             for (int i = 0; i < gui.getInventory().getSize(); i += 1) {
                 ItemStack itemStack = gui.getInventory().getItem(i);
-                if (itemStack == null || itemStack.getAmount() == 0) continue;
+                if (itemStack == null || itemStack.getType() == Material.AIR) continue;
                 list.add(itemStack);
                 gui.getInventory().setItem(i, null);
             }
