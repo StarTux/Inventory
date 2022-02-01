@@ -7,6 +7,7 @@ import com.cavetale.inventory.storage.ItemStorage;
 import com.cavetale.inventory.util.Items;
 import com.winthier.connect.Connect;
 import com.winthier.connect.event.ConnectMessageEvent;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -35,6 +36,18 @@ public final class InventoryStore implements Listener {
 
     protected void enable() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
+        deleteOld();
+    }
+
+    protected void deleteOld() {
+        Date then = new Date(System.currentTimeMillis() - Duration.ofDays(1).toMillis());
+        plugin.database.find(SQLInventory.class)
+            .isNotNull("claimed")
+            .lt("claimed", then)
+            .deleteAsync(count -> {
+                    if (count <= 0) return;
+                    plugin.getLogger().info("Deleted " + count + " inventories claimed before " + then);
+                });
     }
 
     protected void storeToDatabase(Player player) {
@@ -51,7 +64,7 @@ public final class InventoryStore implements Listener {
                                             Json.serialize(tag),
                                             tag.getItemCount());
         plugin.database.insertAsync(row, result -> {
-                plugin.getLogger().info("[InventoryStore] Stored " + player.getName()
+                plugin.getLogger().info("[Store] Stored " + player.getName()
                                         + " items=" + tag.getItemCount()
                                         + " id=" + row.getId()
                                         + " result=" + result);
@@ -83,7 +96,7 @@ public final class InventoryStore implements Listener {
 
     private void loadFromDatabaseCallback(Player player, List<SQLInventory> list) {
         if (!player.isOnline()) {
-            plugin.getLogger().warning("[InventoryStore] Player left: "
+            plugin.getLogger().warning("[Store] Player left: "
                                        + player.getName() + ": " + list);
             for (SQLInventory row : list) {
                 row.setClaimed(null);
@@ -97,7 +110,7 @@ public final class InventoryStore implements Listener {
             try {
                 tag = Json.deserialize(row.getJson(), SQLInventory.Tag.class);
             } catch (Exception e) {
-                plugin.getLogger().log(Level.SEVERE, "[InventoryStore] deserialize failed: " + row, e);
+                plugin.getLogger().log(Level.SEVERE, "[Store] deserialize failed: " + row, e);
                 continue;
             }
             if (tag.getInventory() != null) {
@@ -111,7 +124,7 @@ public final class InventoryStore implements Listener {
             }
             drops.removeIf(Objects::isNull);
             if (!drops.isEmpty()) Items.give(player, drops);
-            plugin.getLogger().info("[InventoryStore] Restored " + player.getName()
+            plugin.getLogger().info("[Store] Restored " + player.getName()
                                     + " items=" + tag.getItemCount()
                                     + " drops=" + drops.size()
                                     + " id=" + row.getId());

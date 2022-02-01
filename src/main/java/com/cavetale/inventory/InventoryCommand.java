@@ -8,14 +8,12 @@ import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLStash;
 import com.cavetale.inventory.storage.InventoryStorage;
-import com.cavetale.inventory.util.Items;
 import com.cavetale.inventory.util.Json;
 import com.winthier.playercache.PlayerCache;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -73,28 +71,26 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
     protected boolean backupList(CommandSender sender, String[] args) {
         if (args.length != 1) return false;
         String ownerName = args[0];
-        UUID ownerUuid = PlayerCache.uuidForName(args[0]);
-        if (ownerUuid == null) throw new CommandWarn("Player not found: " + ownerName);
-        plugin.getDatabase().find(SQLBackup.class)
-            .eq("owner", ownerUuid)
-            .findListAsync(list -> {
-                    sender.sendMessage(text("Found: " + list.size(), YELLOW));
-                    List<Component> lines = new ArrayList<>();
-                    for (SQLBackup row : list) {
-                        String cmd = "/inventory backup restore " + row.getId() + " " + ownerName;
-                        lines.add(join(noSeparators(),
-                                       text("#" + row.getId(), YELLOW),
-                                       text(" " + row.getTypeEnum().shorthand, WHITE),
-                                       text(" items:" + row.getItemCount(), GRAY),
-                                       text(" " + DATE_FORMAT.format(row.getCreated()), WHITE),
-                                       (row.getComment() != null
-                                        ? text(" " + row.getComment(), GRAY, ITALIC)
-                                        : empty()))
-                                  .clickEvent(ClickEvent.suggestCommand(cmd))
-                                  .hoverEvent(HoverEvent.showText(text(cmd, YELLOW))));
-                    }
-                    sender.sendMessage(join(separator(newline()), lines));
-                });
+        PlayerCache owner = PlayerCache.forArg(args[0]);
+        if (owner == null) throw new CommandWarn("Player not found: " + ownerName);
+        plugin.backups.find(owner.uuid, list -> {
+                sender.sendMessage(text("Found: " + list.size(), YELLOW));
+                List<Component> lines = new ArrayList<>();
+                for (SQLBackup row : list) {
+                    String cmd = "/inventory backup restore " + row.getId() + " " + ownerName;
+                    lines.add(join(noSeparators(),
+                                   text("#" + row.getId(), YELLOW),
+                                   text(" " + row.getTypeEnum().shorthand, WHITE),
+                                   text(" items:" + row.getItemCount(), GRAY),
+                                   text(" " + DATE_FORMAT.format(row.getCreated()), WHITE),
+                                   (row.getComment() != null
+                                    ? text(" " + row.getComment(), GRAY, ITALIC)
+                                    : empty()))
+                              .clickEvent(ClickEvent.suggestCommand(cmd))
+                              .hoverEvent(HoverEvent.showText(text(cmd, YELLOW))));
+                }
+                sender.sendMessage(join(separator(newline()), lines));
+            });
         return true;
     }
 
@@ -107,21 +103,19 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         } catch (NumberFormatException nfe) {
             throw new CommandWarn("Invalid id: " + idString);
         }
-        plugin.getDatabase().find(SQLBackup.class)
-            .eq("id", id)
-            .findUniqueAsync(row -> {
-                    if (row == null) {
-                        player.sendMessage(text("Backup not found: #" + id, RED));
-                        return;
-                    }
-                    player.sendMessage(text(" #" + row.getId(), YELLOW)
-                                       .append(text(" " + row.getItemCount(), GRAY))
-                                       .append(text(" " + row.getCreated(), WHITE)));
-                    SQLBackup.Tag tag = row.deserialize();
-                    Inventory inventory = tag.getInventory(row.getTypeEnum()).toInventory();
-                    player.sendMessage(text("Opening...", YELLOW));
-                    player.openInventory(inventory);
-                });
+        plugin.backups.find(id, row -> {
+                if (row == null) {
+                    player.sendMessage(text("Backup not found: #" + id, RED));
+                    return;
+                }
+                player.sendMessage(text(" #" + row.getId(), YELLOW)
+                                   .append(text(" " + row.getItemCount(), GRAY))
+                                   .append(text(" " + row.getCreated(), WHITE)));
+                SQLBackup.Tag tag = row.deserialize();
+                Inventory inventory = tag.getInventory(row.getTypeEnum()).toInventory();
+                player.sendMessage(text("Opening...", YELLOW));
+                player.openInventory(inventory);
+            });
         return true;
     }
 
@@ -138,27 +132,13 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         if (backupType == null) {
             throw new CommandWarn("Unknown backup type: " + args[1]);
         }
-        SQLBackup.Tag tag = new SQLBackup.Tag();
-        switch (backupType) {
-        case INVENTORY:
-            tag.setInventory(InventoryStorage.of(target.getInventory()));
-            break;
-        case ENDER_CHEST:
-            tag.setEnderChest(InventoryStorage.of(target.getEnderChest()));
-            break;
-        default:
-            throw new CommandWarn("Backup type not implemented: " + backupType);
-        }
-        SQLBackup backup = new SQLBackup(target, backupType, tag);
-        if (args.length > 2) {
-            backup.setComment(String.join(" ", Arrays.copyOfRange(args, 2, args.length)));
-        }
-        plugin.getDatabase().insertAsync(backup, count -> {
-                if (count == 1) {
-                    sender.sendMessage(text("Inventory backed up: " + target.getName(), YELLOW));
-                } else {
-                    sender.sendMessage(text("Something went wrong. See console", RED));
-                }
+        String comment = args.length > 2
+            ? String.join(" ", Arrays.copyOfRange(args, 2, args.length))
+            : null;
+        plugin.backups.create(target, backupType, comment, result -> {
+                sender.sendMessage(result
+                                   ? text("Inventory backed up: " + target.getName(), YELLOW)
+                                   : text("Something went wrong. See console", RED));
             });
         return true;
     }
@@ -177,41 +157,22 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         if (target == null) {
             throw new CommandWarn("Player not found: " + playerName);
         }
-        plugin.getDatabase().find(SQLBackup.class)
-            .eq("id", id)
-            .findUniqueAsync(row -> {
-                    if (row == null) {
-                        sender.sendMessage(text("Backup not found: #" + id, RED));
-                        return;
-                    }
-                    if (!target.isOnline()) {
-                        sender.sendMessage(text("Player disconnected: " + target.getName(), RED));
-                        return;
-                    }
-                    sender.sendMessage(text(" #" + row.getId(), YELLOW)
-                                       .append(text(" " + row.getItemCount(), GRAY))
-                                       .append(text(" " + row.getCreated(), WHITE)));
-                    SQLBackup.Tag tag = row.deserialize();
-                    List<ItemStack> drops = new ArrayList<>();
-                    switch (row.getTypeEnum()) {
-                    case INVENTORY:
-                        drops.addAll(tag.getInventory().restore(target.getInventory(), target.getName()));
-                        Items.give(target, drops);
-                        sender.sendMessage(text("Returned inventory to " + target.getName() + ": "
-                                                + tag.getInventory().getCount() + " items, "
-                                                + drops.size() + " drops", YELLOW));
-                        break;
-                    case ENDER_CHEST:
-                        drops.addAll(tag.getEnderChest().restore(target.getEnderChest(), target.getName()));
-                        Items.give(target, drops);
-                        sender.sendMessage(text("Returned ender chest to " + target.getName() + ": "
-                                                + tag.getEnderChest().getCount() + " items, "
-                                                + drops.size() + " drops", YELLOW));
-                        break;
-                    default:
-                        throw new CommandWarn("Backup type not implemented: " + row.getTypeEnum());
-                    }
-                });
+        plugin.backups.find(id, row -> {
+                if (row == null) {
+                    sender.sendMessage(text("Backup not found: #" + id, RED));
+                    return;
+                }
+                if (!target.isOnline()) {
+                    sender.sendMessage(text("Player disconnected: " + target.getName(), RED));
+                    return;
+                }
+                plugin.backups.restore(target, row, dropCount -> {
+                        sender.sendMessage(text("Returned " + row.getTypeEnum().shorthand
+                                                + " to " + target.getName() + ": "
+                                                + row.getItemCount() + " items, "
+                                                + dropCount + " drops", YELLOW));
+                    });
+            });
         return true;
     }
 

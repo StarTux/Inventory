@@ -6,8 +6,6 @@ import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.sql.SQLStash;
 import com.winthier.connect.Connect;
 import com.winthier.sql.SQLDatabase;
-import java.time.Duration;
-import java.util.Date;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -19,6 +17,7 @@ public final class InventoryPlugin extends JavaPlugin {
     protected StashCommand stashCommand = new StashCommand(this);
     protected OpenStashCommand openStashCommand = new OpenStashCommand(this);
     protected SQLDatabase database = new SQLDatabase(this);
+    protected Backups backups = new Backups(this);
     protected InventoryStore inventoryStore;
 
     @Override
@@ -41,11 +40,11 @@ public final class InventoryPlugin extends JavaPlugin {
         if (!database.createAllTables()) {
             throw new IllegalStateException("Database creation failed!");
         }
+        backups.enable();
         inventoryCommand.enable();
         stashCommand.enable();
         openStashCommand.enable();
         Gui.enable(this);
-        deleteOldDatabaseRows();
     }
 
     @Override
@@ -53,24 +52,5 @@ public final class InventoryPlugin extends JavaPlugin {
         Gui.disable(this);
         database.waitForAsyncTask();
         database.close();
-    }
-
-    protected void deleteOldDatabaseRows() {
-        Date then = new Date(System.currentTimeMillis() - Duration.ofDays(90).toMillis());
-        database.find(SQLBackup.class)
-            .lt("created", then)
-            .deleteAsync(count -> {
-                    if (count <= 0) return;
-                    getLogger().info("Deleted " + count + " deleted older than " + then);
-                });
-        if (inventoryStore != null) {
-            database.find(SQLInventory.class)
-                .isNotNull("claimed")
-                .lt("claimed", then)
-                .deleteAsync(count -> {
-                        if (count <= 0) return;
-                        getLogger().info("Deleted " + count + " inventories claimed before " + then);
-                    });
-        }
     }
 }
