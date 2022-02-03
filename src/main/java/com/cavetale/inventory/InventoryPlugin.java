@@ -26,8 +26,7 @@ public final class InventoryPlugin extends JavaPlugin {
             throw new IllegalStateException("Mytems not enabled!");
         }
         instance = this;
-        final boolean doInventoryStore = Connect.getInstance().getServerName().equals("beta")
-            || Connect.getInstance().getServerName().equals("alpha");
+        final boolean doInventoryStore = true;
         if (doInventoryStore) {
             database.registerTables(SQLStash.class, SQLBackup.class, SQLInventory.class);
             inventoryStore = new InventoryStore(this);
