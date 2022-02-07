@@ -15,9 +15,11 @@ import org.bukkit.inventory.ItemStack;
  */
 @Data
 public final class InventoryStorage {
+    private static final boolean DO_STORE_OPTIONAL_DATA = false;
     protected List<ItemStorage> items;
     protected int size;
     protected int count;
+    protected transient boolean doStoreOptionalData = DO_STORE_OPTIONAL_DATA;
 
     public static InventoryStorage of(Inventory inventory) {
         InventoryStorage result = new InventoryStorage();
@@ -68,7 +70,15 @@ public final class InventoryStorage {
         for (int slot = 0; slot < size; slot += 1) {
             ItemStack itemStack = inventory.getItem(slot);
             if (itemStack == null || itemStack.getType() == Material.AIR) continue;
-            items.add(ItemStorage.of(slot, itemStack));
+            if (doStoreOptionalData) {
+                ItemStorage itemStorage = new ItemStorage();
+                itemStorage.slot = slot;
+                itemStorage.doStoreOptionalData = true;
+                itemStorage.store(itemStack);
+                items.add(itemStorage);
+            } else {
+                items.add(ItemStorage.of(slot, itemStack));
+            }
             count += itemStack.getAmount();
         }
     }
