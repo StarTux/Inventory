@@ -1,6 +1,6 @@
 package com.cavetale.inventory.sql;
 
-import com.cavetale.inventory.util.Json;
+import com.cavetale.core.util.Json;
 import java.util.Date;
 import java.util.UUID;
 import javax.persistence.Column;

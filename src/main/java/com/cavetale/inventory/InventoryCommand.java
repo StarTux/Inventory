@@ -4,11 +4,13 @@ import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.util.Json;
 import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLStash;
 import com.cavetale.inventory.storage.InventoryStorage;
-import com.cavetale.inventory.util.Json;
+import com.cavetale.inventory.storage.ItemStorage;
+import com.cavetale.inventory.util.Items;
 import com.winthier.playercache.PlayerCache;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -66,6 +68,18 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                         CommandArgCompleter.REPEAT)
             .description("Create an inventory backup")
             .senderCaller(this::backupCreate);
+        // Store
+        CommandNode storeNode = rootNode.addChild("store")
+            .description("Player inventory storage commands");
+        storeNode.addChild("testitem").denyTabCompletion()
+            .description("Serialize item in hand")
+            .playerCaller(this::storeTestItem);
+        storeNode.addChild("dupeitem").denyTabCompletion()
+            .description("Duplicate item in hand")
+            .playerCaller(this::storeDupeItem);
+        storeNode.addChild("dupeitem64").denyTabCompletion()
+            .description("Duplicate base64 item in hand")
+            .playerCaller(this::storeDupeItem64);
     }
 
     protected boolean backupList(CommandSender sender, String[] args) {
@@ -198,6 +212,51 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         // ignoring drops here...
         gui.open(sender);
         sender.sendMessage(text("Opening copy of stash of " + player.name, YELLOW));
+        return true;
+    }
+
+    protected boolean storeTestItem(Player player, String[] args) {
+        ItemStack itemStack = player.getInventory().getItemInMainHand();
+        ItemStorage itemStorage = ItemStorage.of(itemStack);
+        String json = Json.serialize(itemStorage);
+        player.sendMessage(text(json, AQUA));
+        if (itemStorage.isEmpty()) return true;
+        plugin.getLogger().info(json);
+        ItemStack copy = itemStorage.toItemStack();
+        String json2 = Json.serialize(ItemStorage.of(copy));
+        if (!itemStack.isSimilar(copy)) {
+            // This is not always accurate, as the internals of
+            // InventoryStorage show.  Many examples of item
+            // comparisons yield false, even though they are in fact
+            // identicals.  The culprit are meaningless differences in
+            // the item's data tag, such as inventory arrays being
+            // null, versus being empty.
+            player.sendMessage(text(json2, RED));
+            plugin.getLogger().info(org.bukkit.ChatColor.RED + json2);
+        }
+        return true;
+    }
+
+    protected boolean storeDupeItem(Player player, String[] args) {
+        ItemStack itemStack = player.getInventory().getItemInMainHand();
+        ItemStorage itemStorage = ItemStorage.of(itemStack);
+        ItemStack copy = itemStorage.toItemStack();
+        player.getInventory().addItem(copy);
+        player.sendMessage(text("Item duplicated: " + Json.serialize(itemStorage), YELLOW));
+        return true;
+    }
+
+    protected boolean storeDupeItem64(Player player, String[] args) {
+        ItemStack itemStack = player.getInventory().getItemInMainHand();
+        ItemStorage itemStorage = ItemStorage.of(itemStack);
+        String base64 = itemStorage.getBase64();
+        if (base64 == null) {
+            player.sendMessage(text("No Base64 component!", AQUA));
+            return true;
+        }
+        ItemStack copy = Items.deserialize(base64);
+        player.getInventory().addItem(copy);
+        player.sendMessage(text("Item duplicated: " + base64, YELLOW));
         return true;
     }
 }

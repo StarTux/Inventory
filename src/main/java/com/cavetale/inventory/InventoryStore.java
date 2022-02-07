@@ -56,7 +56,7 @@ public final class InventoryStore implements Listener {
         tag.setEnderChest(InventoryStorage.of(player.getEnderChest()));
         ItemStack cursor = player.getOpenInventory().getCursor();
         if (cursor != null && cursor.getType() != Material.AIR) {
-            tag.setCursor(ItemStorage.of(0, cursor));
+            tag.setCursor(ItemStorage.of(cursor));
         }
         if (tag.isEmpty()) return;
         SQLInventory row = new SQLInventory(player.getUniqueId(),

@@ -9,7 +9,7 @@ author: StarTux
 website: https://github.com/StarTux/Inventory
 
 depend: [Core, SQL, Mytems, PlayerCache]
-softdepend: []
+softdepend: [Connect]
 
 commands:
 

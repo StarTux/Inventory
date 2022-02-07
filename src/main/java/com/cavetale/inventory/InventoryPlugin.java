@@ -4,7 +4,6 @@ import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.sql.SQLStash;
-import com.winthier.connect.Connect;
 import com.winthier.sql.SQLDatabase;
 import lombok.Getter;
 import org.bukkit.Bukkit;
