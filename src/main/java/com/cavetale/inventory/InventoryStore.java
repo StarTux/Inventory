@@ -31,6 +31,7 @@ import org.bukkit.inventory.ItemStack;
  */
 @RequiredArgsConstructor
 public final class InventoryStore implements Listener {
+    private static final String PERM_NOSTORE = "inventory.nostore";
     private static final String MESSAGE_STORED = "inventory:stored";
     private final InventoryPlugin plugin;
 
@@ -133,12 +134,16 @@ public final class InventoryStore implements Listener {
 
     @EventHandler
     protected void onPlayerJoin(PlayerJoinEvent event) {
-        loadFromDatabase(event.getPlayer());
+        Player player = event.getPlayer();
+        if (player.hasPermission(PERM_NOSTORE) && player.isPermissionSet(PERM_NOSTORE)) return;
+        loadFromDatabase(player);
     }
 
     @EventHandler
     protected void onPlayerQuit(PlayerQuitEvent event) {
-        storeToDatabase(event.getPlayer());
+        Player player = event.getPlayer();
+        if (player.hasPermission(PERM_NOSTORE) && player.isPermissionSet(PERM_NOSTORE)) return;
+        storeToDatabase(player);
     }
 
     @EventHandler

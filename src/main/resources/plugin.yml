@@ -43,3 +43,7 @@ permissions:
   inventory.stash:
     description: Use /stash
     default: op
+
+  inventory.nostore:
+    description: Skip inventory storage
+    default: false
