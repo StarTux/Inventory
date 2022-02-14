@@ -28,7 +28,7 @@ import org.bukkit.inventory.ItemStack;
 public final class Backups implements Listener {
     private final InventoryPlugin plugin;
     private Map<UUID, Session> sessions = new HashMap<>();
-    private final Duration backupInterval = Duration.ofMinutes(10);
+    private final Duration backupInterval = Duration.ofMinutes(5);
 
     protected void enable() {
         for (Player player : Bukkit.getOnlinePlayers()) {
