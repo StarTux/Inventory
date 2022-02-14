@@ -35,7 +35,7 @@ public final class SQLBackup {
     @RequiredArgsConstructor
     public enum Type {
         INVENTORY("inv"),
-        ENDER_CHEST("ender");
+        ENDER_CHEST("end");
 
         public final String shorthand;
 

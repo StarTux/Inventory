@@ -97,8 +97,9 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                                    text(" " + row.getTypeEnum().shorthand, WHITE),
                                    text(" items:" + row.getItemCount(), GRAY),
                                    text(" " + DATE_FORMAT.format(row.getCreated()), WHITE),
+                                   Component.space(),
                                    (row.getComment() != null
-                                    ? text(" " + row.getComment(), GRAY, ITALIC)
+                                    ? text(row.getComment(), GRAY, ITALIC)
                                     : empty()))
                               .clickEvent(ClickEvent.suggestCommand(cmd))
                               .hoverEvent(HoverEvent.showText(text(cmd, YELLOW))));
