@@ -34,7 +34,7 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.*;
 
 public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("YY/MM/DD hh:mm");
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yy/MM/dd hh:mm");
 
     protected InventoryCommand(final InventoryPlugin plugin) {
         super(plugin, "inventory");
