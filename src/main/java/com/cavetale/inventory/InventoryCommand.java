@@ -13,7 +13,6 @@ import com.cavetale.inventory.storage.ItemStorage;
 import com.cavetale.inventory.util.Items;
 import com.winthier.playercache.PlayerCache;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import net.kyori.adventure.text.Component;
@@ -26,10 +25,8 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.join;
-import static net.kyori.adventure.text.Component.newline;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
-import static net.kyori.adventure.text.JoinConfiguration.separator;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.*;
 
@@ -89,22 +86,23 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         if (owner == null) throw new CommandWarn("Player not found: " + ownerName);
         plugin.backups.find(owner.uuid, list -> {
                 sender.sendMessage(text("Found: " + list.size(), YELLOW));
-                List<Component> lines = new ArrayList<>();
                 for (SQLBackup row : list) {
-                    String cmd = "/inventory backup restore " + row.getId() + " " + ownerName;
-                    lines.add(join(noSeparators(),
-                                   text("#" + row.getId(), YELLOW),
-                                   text(" " + row.getTypeEnum().shorthand, WHITE),
-                                   text(" items:" + row.getItemCount(), GRAY),
-                                   text(" " + DATE_FORMAT.format(row.getCreated()), WHITE),
-                                   Component.space(),
-                                   (row.getComment() != null
-                                    ? text(row.getComment(), GRAY, ITALIC)
-                                    : empty()))
-                              .clickEvent(ClickEvent.suggestCommand(cmd))
-                              .hoverEvent(HoverEvent.showText(text(cmd, YELLOW))));
+                    String restoreCmd = "/inventory backup restore " + row.getId() + " " + ownerName;
+                    String openCmd = "/inventory backup open " + row.getId();
+                    sender.sendMessage(join(noSeparators(),
+                                            text("#" + row.getId(), YELLOW)
+                                            .clickEvent(ClickEvent.suggestCommand(restoreCmd))
+                                            .hoverEvent(HoverEvent.showText(text(restoreCmd, YELLOW))),
+                                            text(" " + row.getTypeEnum().shorthand, WHITE),
+                                            text(" items:" + row.getItemCount(), GRAY),
+                                            text(" " + DATE_FORMAT.format(row.getCreated()), WHITE),
+                                            Component.space(),
+                                            (row.getComment() != null
+                                             ? text(row.getComment(), GRAY, ITALIC)
+                                             : empty()))
+                                       .clickEvent(ClickEvent.suggestCommand(openCmd))
+                                       .hoverEvent(HoverEvent.showText(text(openCmd, YELLOW))));
                 }
-                sender.sendMessage(join(separator(newline()), lines));
             });
         return true;
     }
