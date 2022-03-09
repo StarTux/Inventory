@@ -6,7 +6,9 @@ import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.gui.Gui;
+import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLBackup;
+import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.sql.SQLStash;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
@@ -39,9 +41,15 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
 
     @Override
     protected void onEnable() {
-        rootNode.addChild("stash").arguments("<player>")
+        // Stash
+        CommandNode stashNode = rootNode.addChild("stash")
+            .description("Stash commands");
+        stashNode.addChild("open").arguments("<player>")
             .description("Peek in a player's stash (copy)")
-            .playerCaller(this::stash);
+            .playerCaller(this::stashOpen);
+        stashNode.addChild("transfer").arguments("<from> <to>")
+            .description("Transfer stash")
+            .senderCaller(this::stashTransfer);
         // Backup
         CommandNode backupNode = rootNode.addChild("backup")
             .description("Backup commands");
@@ -77,6 +85,33 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         storeNode.addChild("dupeitem64").denyTabCompletion()
             .description("Duplicate base64 item in hand")
             .playerCaller(this::storeDupeItem64);
+        storeNode.addChild("transfer").arguments("<from> <to>")
+            .description("Transfer inventories")
+            .senderCaller(this::storeTransfer);
+    }
+
+    protected boolean stashTransfer(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        PlayerCache from = PlayerCache.forArg(args[0]);
+        if (from == null) throw new CommandWarn("Player not found: " + args[0]);
+        PlayerCache to = PlayerCache.forArg(args[1]);
+        if (to == null) throw new CommandWarn("Player not found: " + args[1]);
+        if (from.equals(to)) throw new CommandWarn("Players are identical!");
+        List<SQLStash> rows = plugin.database.find(SQLStash.class).eq("owner", from.uuid).findList();
+        if (rows.isEmpty()) throw new CommandWarn(from.name + " does not have a stash");
+        int count = 0;
+        for (SQLStash row : rows) {
+            InventoryStorage inventoryStorage = row.getInventoryStorage();
+            if (inventoryStorage.isEmpty()) continue;
+            SQLItemMail itemMail = new SQLItemMail(SQLItemMail.SERVER_UUID, to.uuid, inventoryStorage.getItems(), text("Transfer"));
+            plugin.database.insert(itemMail);
+            count += 1;
+        }
+        plugin.database.delete(rows);
+        sender.sendMessage("Transferred stash from " + from.name + " to " + to.name + ":"
+                           + " rows=" + rows.size()
+                           + " imails=" + count);
+        return true;
     }
 
     protected boolean backupList(CommandSender sender, String[] args) {
@@ -189,7 +224,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         return true;
     }
 
-    protected boolean stash(Player sender, String[] args) {
+    protected boolean stashOpen(Player sender, String[] args) {
         if (args.length != 1) return false;
         PlayerCache player = PlayerCache.forName(args[0]);
         if (player == null) {
@@ -256,6 +291,23 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         ItemStack copy = Items.deserialize(base64);
         player.getInventory().addItem(copy);
         player.sendMessage(text("Item duplicated: " + base64, YELLOW));
+        return true;
+    }
+
+    protected boolean storeTransfer(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        PlayerCache from = PlayerCache.forArg(args[0]);
+        if (from == null) throw new CommandWarn("Player not found: " + args[0]);
+        PlayerCache to = PlayerCache.forArg(args[1]);
+        if (to == null) throw new CommandWarn("Player not found: " + args[1]);
+        if (from.equals(to)) throw new CommandWarn("Players are identical!");
+        int count = plugin.database.update(SQLInventory.class)
+            .set("owner", to.uuid)
+            .where(c -> c.eq("owner", from.uuid).isNull("claimed"))
+            .sync();
+        if (count == 0) throw new CommandWarn(from.name + " does not have an inventory stored");
+        sender.sendMessage(text("Inventories transferred from " + from.name + " to " + to.name + ":"
+                                + " rows=" + count, YELLOW));
         return true;
     }
 }

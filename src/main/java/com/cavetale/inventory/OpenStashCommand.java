@@ -14,7 +14,7 @@ public final class OpenStashCommand implements TabExecutor {
 
     public void enable() {
         rootNode = new CommandNode("openstash").arguments("<player>")
-            .playerCaller(plugin.inventoryCommand::stash);
+            .playerCaller(plugin.inventoryCommand::stashOpen);
         plugin.getCommand("openstash").setExecutor(this);
     }
 

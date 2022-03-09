@@ -9,14 +9,14 @@ author: StarTux
 website: https://github.com/StarTux/Inventory
 
 depend: [Core, SQL, Mytems, PlayerCache]
-softdepend: [Connect]
+softdepend: [Connect, Sidebar]
 
 commands:
 
   inventory:
     aliases: []
     description: Inventory Command
-    permission: inventory.inventory
+    permission: inventory.admin
     usage: |-
       /inventory reload - Reload config
 
@@ -34,16 +34,35 @@ commands:
     usage: |-
       /openstash <player> - Open a player stash
 
+  itemmail:
+    aliases: [imail]
+    description: Item Mail
+    permission: inventory.mail
+    usage: /itemmail
+
+  ms2:
+    aliases: [massstorage2]
+    description: Access Mass Storage
+    permission: inventory.ms
+
 permissions:
 
-  inventory.inventory:
+  inventory.admin:
     description: Use /inventory
     default: op
 
   inventory.stash:
     description: Use /stash
-    default: op
+    default: false
 
   inventory.nostore:
     description: Skip inventory storage
+    default: false
+
+  inventory.mail:
+    description: Access item mails
+    default: false
+
+  inventory.ms:
+    description: Access Mass Storage
     default: false

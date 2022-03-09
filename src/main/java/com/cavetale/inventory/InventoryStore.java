@@ -1,10 +1,10 @@
 package com.cavetale.inventory;
 
 import com.cavetale.core.util.Json;
+import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
-import com.cavetale.inventory.util.Items;
 import com.winthier.connect.Connect;
 import com.winthier.connect.event.ConnectMessageEvent;
 import java.time.Duration;
@@ -23,6 +23,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
+import static net.kyori.adventure.text.Component.text;
 
 /**
  * This class, when activated, will take care of player inventories so
@@ -124,7 +125,15 @@ public final class InventoryStore implements Listener {
                 drops.add(tag.getCursor().toItemStack());
             }
             drops.removeIf(Objects::isNull);
-            if (!drops.isEmpty()) Items.give(player, drops);
+            if (!drops.isEmpty()) {
+                List<ItemStorage> drops2 = new ArrayList<>();
+                for (ItemStack it : drops) {
+                    drops2.add(ItemStorage.of(it));
+                }
+                SQLItemMail mail = new SQLItemMail(SQLItemMail.SERVER_UUID, player.getUniqueId(), drops2,
+                                                   text("You dropped this earlier"));
+                plugin.database.insertAsync(mail, null);
+            }
             plugin.getLogger().info("[Store] Restored " + player.getName()
                                     + " items=" + tag.getItemCount()
                                     + " drops=" + drops.size()

@@ -101,6 +101,6 @@ public final class InventoryStorage {
     }
 
     public boolean isEmpty() {
-        return items.isEmpty();
+        return items == null || items.isEmpty();
     }
 }

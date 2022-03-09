@@ -46,7 +46,8 @@ public final class Gui implements InventoryHolder {
     }
 
     public enum Type {
-        STASH;
+        STASH,
+        MAIL;
     }
 
     public Gui(final JavaPlugin plugin, final Type type) {

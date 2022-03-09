@@ -1,6 +1,7 @@
 package com.cavetale.inventory.sql;
 
 import com.cavetale.core.util.Json;
+import com.cavetale.inventory.storage.InventoryStorage;
 import java.util.Date;
 import java.util.UUID;
 import javax.persistence.Column;
@@ -36,5 +37,9 @@ public final class SQLStash {
     @Override
     public String toString() {
         return Json.serialize(this);
+    }
+
+    public InventoryStorage getInventoryStorage() {
+        return Json.deserialize(json, InventoryStorage.class, InventoryStorage::new);
     }
 }
