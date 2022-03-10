@@ -49,6 +49,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
             .playerCaller(this::stashOpen);
         stashNode.addChild("transfer").arguments("<from> <to>")
             .description("Transfer stash")
+            .completers(PlayerCache.NAME_COMPLETER, PlayerCache.NAME_COMPLETER)
             .senderCaller(this::stashTransfer);
         // Backup
         CommandNode backupNode = rootNode.addChild("backup")
@@ -87,6 +88,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
             .playerCaller(this::storeDupeItem64);
         storeNode.addChild("transfer").arguments("<from> <to>")
             .description("Transfer inventories")
+            .completers(PlayerCache.NAME_COMPLETER, PlayerCache.NAME_COMPLETER)
             .senderCaller(this::storeTransfer);
     }
 
