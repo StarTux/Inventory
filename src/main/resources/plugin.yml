@@ -40,11 +40,6 @@ commands:
     permission: inventory.mail
     usage: /itemmail
 
-  ms2:
-    aliases: [massstorage2]
-    description: Access Mass Storage
-    permission: inventory.ms
-
 permissions:
 
   inventory.admin:
@@ -61,8 +56,4 @@ permissions:
 
   inventory.mail:
     description: Access item mails
-    default: false
-
-  inventory.ms:
-    description: Access Mass Storage
     default: false

@@ -1,11 +1,9 @@
 package com.cavetale.inventory;
 
-import com.cavetale.core.connect.ServerCategory;
+import com.cavetale.core.connect.NetworkServer;
 import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.mail.ItemMail;
 import com.cavetale.inventory.mail.SQLItemMail;
-import com.cavetale.inventory.ms.MassStorage;
-import com.cavetale.inventory.ms.SQLMassStorage;
 import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.sql.SQLStash;
@@ -23,7 +21,6 @@ public final class InventoryPlugin extends JavaPlugin {
     protected SQLDatabase database = new SQLDatabase(this);
     protected Backups backups = new Backups(this);
     protected InventoryStore inventoryStore;
-    protected MassStorage massStorage;
     protected ItemMail itemMail;
 
     @Override
@@ -32,7 +29,8 @@ public final class InventoryPlugin extends JavaPlugin {
             throw new IllegalStateException("Mytems not enabled!");
         }
         instance = this;
-        final boolean survival = ServerCategory.current().isSurvival();
+        final NetworkServer networkServer = NetworkServer.current();
+        final boolean survival = networkServer.category.isSurvival();
         database.registerTables(SQLStash.class, SQLBackup.class);
         final boolean doInventoryStore = survival;
         if (doInventoryStore) {
@@ -42,15 +40,6 @@ public final class InventoryPlugin extends JavaPlugin {
             getLogger().info("Inventory Store enabled");
         } else {
             getLogger().info("Inventory Store disabled");
-        }
-        final boolean doMassStorage = false && survival;
-        if (doMassStorage) {
-            database.registerTable(SQLMassStorage.class);
-            massStorage = new MassStorage(this);
-            massStorage.enable();
-            getLogger().info("Mass Storage Store enabled");
-        } else {
-            getLogger().info("Mass Storage Store disabled");
         }
         final boolean doItemMail = survival;
         if (doItemMail) {
