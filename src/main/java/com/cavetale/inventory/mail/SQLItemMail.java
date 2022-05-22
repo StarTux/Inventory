@@ -2,6 +2,7 @@ package com.cavetale.inventory.mail;
 
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.storage.ItemStorage;
+import com.winthier.sql.SQLRow;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -19,7 +20,7 @@ import static net.kyori.adventure.text.Component.empty;
 @Table(name = "mails",
        indexes = @Index(unique = false, name = "owner", columnList = "owner"))
 @Data
-public final class SQLItemMail {
+public final class SQLItemMail implements SQLRow {
     public static final UUID SERVER_UUID = new UUID(0L, 0L);
 
     @Id

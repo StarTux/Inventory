@@ -2,6 +2,7 @@ package com.cavetale.inventory.sql;
 
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.storage.InventoryStorage;
+import com.winthier.sql.SQLRow;
 import java.util.Date;
 import java.util.UUID;
 import javax.persistence.Column;
@@ -12,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Player;
 
 @Data @Table(name = "backup")
-public final class SQLBackup {
+public final class SQLBackup implements SQLRow {
     @Id
     private Integer id;
     @Column(nullable = false)

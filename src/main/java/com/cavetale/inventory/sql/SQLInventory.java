@@ -2,6 +2,7 @@ package com.cavetale.inventory.sql;
 
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
+import com.winthier.sql.SQLRow;
 import java.util.Date;
 import java.util.UUID;
 import javax.persistence.Column;
@@ -28,7 +29,7 @@ import lombok.Data;
            @Index(unique = false, name = "claimed", columnList = "claimed"),
        })
 @Data
-public final class SQLInventory {
+public final class SQLInventory implements SQLRow {
     @Id
     private Integer id;
     @Column(nullable = false)

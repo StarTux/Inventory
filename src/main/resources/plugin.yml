@@ -1,11 +1,11 @@
 main: com.cavetale.inventory.InventoryPlugin
-
 name: Inventory
+
 version: 0.1
-description: Store player inventories in a database
 api-version: 1.17
 
 author: StarTux
+description: Store player inventories in a database
 website: https://github.com/StarTux/Inventory
 
 depend: [Core, SQL, Mytems, PlayerCache]

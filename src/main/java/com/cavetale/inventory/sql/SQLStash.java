@@ -2,6 +2,7 @@ package com.cavetale.inventory.sql;
 
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.storage.InventoryStorage;
+import com.winthier.sql.SQLRow;
 import java.util.Date;
 import java.util.UUID;
 import javax.persistence.Column;
@@ -10,7 +11,7 @@ import javax.persistence.Table;
 import lombok.Data;
 
 @Data @Table(name = "stash")
-public final class SQLStash {
+public final class SQLStash implements SQLRow {
     @Id
     private Integer id;
     @Column(nullable = false, unique = true)
