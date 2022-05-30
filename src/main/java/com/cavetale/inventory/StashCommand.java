@@ -38,9 +38,7 @@ public final class StashCommand implements CommandExecutor {
         if (args.length != 0) return false;
         Player player = (Player) sender;
         if (stashOf(player) != null) return true;
-        if (!PluginPlayerEvent.Name.OPEN_STASH.cancellable(plugin, player).call()) {
-            return true;
-        }
+        PluginPlayerEvent.Name.OPEN_STASH.call(plugin, player);
         plugin.database.scheduleAsyncTask(() -> openStashAsync(player));
         return true;
     }

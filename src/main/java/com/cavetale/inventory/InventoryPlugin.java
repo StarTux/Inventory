@@ -8,6 +8,7 @@ import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.sql.SQLStash;
 import com.winthier.sql.SQLDatabase;
+import java.util.List;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -31,7 +32,7 @@ public final class InventoryPlugin extends JavaPlugin {
         instance = this;
         final NetworkServer networkServer = NetworkServer.current();
         final boolean survival = networkServer.category.isSurvival();
-        database.registerTables(SQLStash.class, SQLBackup.class);
+        database.registerTables(List.of(SQLStash.class, SQLBackup.class));
         final boolean doInventoryStore = survival;
         if (doInventoryStore) {
             database.registerTable(SQLInventory.class);
