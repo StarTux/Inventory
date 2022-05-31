@@ -2,6 +2,7 @@ package com.cavetale.inventory.sql;
 
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
+import com.cavetale.inventory.storage.PlayerStatusStorage;
 import com.winthier.sql.SQLRow;
 import java.util.Date;
 import java.util.UUID;
@@ -55,11 +56,13 @@ public final class SQLInventory implements SQLRow {
         protected InventoryStorage inventory;
         protected InventoryStorage enderChest;
         protected ItemStorage cursor;
+        protected PlayerStatusStorage status;
 
         public boolean isEmpty() {
             return (inventory == null || inventory.isEmpty())
                 && (enderChest == null || enderChest.isEmpty())
-                && cursor == null;
+                && cursor == null
+                && status == null;
         }
 
         public int getItemCount() {

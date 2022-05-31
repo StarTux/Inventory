@@ -5,6 +5,7 @@ import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
+import com.cavetale.inventory.storage.PlayerStatusStorage;
 import com.winthier.connect.Connect;
 import com.winthier.connect.event.ConnectMessageEvent;
 import java.time.Duration;
@@ -56,6 +57,7 @@ public final class InventoryStore implements Listener {
         SQLInventory.Tag tag = new SQLInventory.Tag();
         tag.setInventory(InventoryStorage.of(player.getInventory()));
         tag.setEnderChest(InventoryStorage.of(player.getEnderChest()));
+        tag.setStatus(PlayerStatusStorage.of(player));
         ItemStack cursor = player.getOpenInventory().getCursor();
         if (cursor != null && cursor.getType() != Material.AIR) {
             tag.setCursor(ItemStorage.of(cursor));
@@ -74,6 +76,7 @@ public final class InventoryStore implements Listener {
             });
         InventoryStorage.clear(player.getInventory());
         InventoryStorage.clear(player.getEnderChest());
+        PlayerStatusStorage.clear(player);
         player.getOpenInventory().setCursor(null);
     }
 
@@ -133,6 +136,9 @@ public final class InventoryStore implements Listener {
                 SQLItemMail mail = new SQLItemMail(SQLItemMail.SERVER_UUID, player.getUniqueId(), drops2,
                                                    text("You dropped this earlier"));
                 plugin.database.insertAsync(mail, null);
+            }
+            if (tag.getStatus() != null) {
+                tag.getStatus().restore(player);
             }
             plugin.getLogger().info("[Store] Restored " + player.getName()
                                     + " items=" + tag.getItemCount()
