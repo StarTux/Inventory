@@ -15,11 +15,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.text;
@@ -131,5 +133,16 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
                   join(noSeparators(),
                        text("You have ", AQUA),
                        text("/imail", YELLOW)));
+    }
+
+    public static void send(UUID target, Inventory inventory, Component message) {
+        List<ItemStorage> items = new ArrayList<>();
+        for (ItemStack item : inventory) {
+            if (item == null || item.getType().isAir()) continue;
+            items.add(ItemStorage.of(item));
+        }
+        if (items.isEmpty()) return;
+        SQLItemMail row = new SQLItemMail(SQLItemMail.SERVER_UUID, target, items, message);
+        InventoryPlugin.getInstance().getDatabase().insertAsync(row, null);
     }
 }
