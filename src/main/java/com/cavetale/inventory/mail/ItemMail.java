@@ -9,10 +9,8 @@ import com.cavetale.inventory.util.Items;
 import com.cavetale.sidebar.PlayerSidebarEvent;
 import com.cavetale.sidebar.Priority;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 import net.kyori.adventure.text.Component;
@@ -33,7 +31,7 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
  * their item mail.
  */
 public final class ItemMail extends AbstractCommand<InventoryPlugin> implements Listener {
-    private Map<UUID, SQLItemMail> userMailCache = new HashMap<>();
+    private HashSet<UUID> userMailCache = new HashSet<>();
     public static final String MAIL_PERMISSION = "inventory.mail";
 
     public ItemMail(final InventoryPlugin plugin) {
@@ -50,20 +48,10 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
     }
 
     private void check() {
-        HashSet<UUID> uuids = new HashSet<>();
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            uuids.add(player.getUniqueId());
-        }
         plugin.getDatabase().find(SQLItemMail.class)
-            .in("owner", uuids)
-            .orderByAscending("created")
-            .findListAsync(rows -> {
+            .findValuesAsync("owner", UUID.class, uuids -> {
                     userMailCache.clear();
-                    for (SQLItemMail it : rows) {
-                        UUID uuid = it.getOwner();
-                        if (userMailCache.containsKey(uuid)) continue;
-                        userMailCache.put(uuid, it);
-                    }
+                    userMailCache.addAll(uuids);
                 });
     }
 
@@ -127,7 +115,7 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
 
     @EventHandler
     private void onPlayerSidebar(PlayerSidebarEvent event) {
-        if (!userMailCache.containsKey(event.getPlayer().getUniqueId())) return;
+        if (!userMailCache.contains(event.getPlayer().getUniqueId())) return;
         if (!event.getPlayer().hasPermission(MAIL_PERMISSION)) return;
         event.add(plugin, Priority.HIGH,
                   join(noSeparators(),
