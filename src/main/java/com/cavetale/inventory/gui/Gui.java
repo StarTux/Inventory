@@ -37,6 +37,7 @@ public final class Gui implements InventoryHolder {
     @Getter private int size = 3 * 9;
     @Getter private Component title = Component.empty();
     private boolean locked = false;
+    private static boolean enabled;
 
     @RequiredArgsConstructor @AllArgsConstructor
     private static final class Slot {
@@ -51,6 +52,7 @@ public final class Gui implements InventoryHolder {
     }
 
     public Gui(final JavaPlugin plugin, final Type type) {
+        if (!enabled) throw new IllegalStateException("Gui not enabled");
         this.plugin = Objects.requireNonNull(plugin, "plugin=null");
         this.type = type;
     }
@@ -242,6 +244,7 @@ public final class Gui implements InventoryHolder {
 
     public static void enable(JavaPlugin plugin) {
         Bukkit.getPluginManager().registerEvents(new EventListener(plugin), plugin);
+        enabled = true;
     }
 
     public static void disable(JavaPlugin plugin) {

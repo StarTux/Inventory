@@ -64,6 +64,9 @@ public final class Backups implements Listener {
             if (player.getGameMode() != GameMode.SURVIVAL && player.getGameMode() != GameMode.ADVENTURE) {
                 return;
             }
+            if (!player.hasPermission("inventory.nobackup")) {
+                return;
+            }
             create(player, SQLBackup.Type.INVENTORY, "Scheduled", result1 -> {
                     create(player, SQLBackup.Type.ENDER_CHEST, "Scheduled", result2 -> {
                             plugin.getLogger().info("[Backups] Finished " + player.getName()

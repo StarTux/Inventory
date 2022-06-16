@@ -1,6 +1,6 @@
 package com.cavetale.inventory;
 
-import com.cavetale.core.connect.NetworkServer;
+import com.cavetale.core.connect.ServerCategory;
 import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.mail.ItemMail;
 import com.cavetale.inventory.mail.SQLItemMail;
@@ -20,9 +20,9 @@ public final class InventoryPlugin extends JavaPlugin {
     protected StashCommand stashCommand = new StashCommand(this);
     protected OpenStashCommand openStashCommand = new OpenStashCommand(this);
     protected SQLDatabase database = new SQLDatabase(this);
-    protected Backups backups = new Backups(this);
+    protected Backups backups;
     protected InventoryStore inventoryStore;
-    protected ItemMail itemMail;
+    protected final ItemMail itemMail = new ItemMail(this);
 
     @Override
     public void onEnable() {
@@ -30,31 +30,17 @@ public final class InventoryPlugin extends JavaPlugin {
             throw new IllegalStateException("Mytems not enabled!");
         }
         instance = this;
-        final NetworkServer networkServer = NetworkServer.current();
-        final boolean survival = networkServer.category.isSurvival();
-        database.registerTables(List.of(SQLStash.class, SQLBackup.class));
-        final boolean doInventoryStore = survival;
-        if (doInventoryStore) {
-            database.registerTable(SQLInventory.class);
-            inventoryStore = new InventoryStore(this);
-            inventoryStore.enable();
-            getLogger().info("Inventory Store enabled");
-        } else {
-            getLogger().info("Inventory Store disabled");
-        }
-        final boolean doItemMail = survival;
-        if (doItemMail) {
-            database.registerTable(SQLItemMail.class);
-            itemMail = new ItemMail(this);
-            itemMail.enable();
-            getLogger().info("Item Mail Store enabled");
-        } else {
-            getLogger().info("Item Mail Store disabled");
-        }
+        database.registerTables(List.of(SQLStash.class, SQLBackup.class, SQLInventory.class, SQLItemMail.class));
         if (!database.createAllTables()) {
             throw new IllegalStateException("Database creation failed!");
         }
-        backups.enable();
+        if (ServerCategory.current().isSurvival()) {
+            inventoryStore = new InventoryStore(this);
+            inventoryStore.enable();
+            backups = new Backups(this);
+            backups.enable();
+        }
+        itemMail.enable();
         inventoryCommand.enable();
         stashCommand.enable();
         openStashCommand.enable();

@@ -1,6 +1,8 @@
 package com.cavetale.inventory.mail;
 
 import com.cavetale.core.command.AbstractCommand;
+import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.connect.ServerCategory;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.InventoryPlugin;
 import com.cavetale.inventory.gui.Gui;
@@ -55,8 +57,10 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
                 });
     }
 
-    private boolean pickup(Player player, String[] args) {
-        if (args.length != 0) return false;
+    private void pickup(Player player) {
+        if (!ServerCategory.current().isSurvival()) {
+            throw new CommandWarn("Item mails are only available in survival mode!");
+        }
         final UUID uuid = player.getUniqueId();
         plugin.getDatabase().scheduleAsyncTask(() -> {
                 List<SQLItemMail> rows = plugin.getDatabase().find(SQLItemMail.class)
@@ -74,7 +78,6 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
                 plugin.getDatabase().delete(row);
                 Bukkit.getScheduler().runTask(plugin, () -> pickupCallback(player, row));
             });
-        return true;
     }
 
     private void pickupCallback(Player player, SQLItemMail row) {

@@ -1,5 +1,6 @@
 package com.cavetale.inventory;
 
+import com.cavetale.core.connect.ServerCategory;
 import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.gui.Gui;
@@ -31,12 +32,15 @@ public final class StashCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(final CommandSender sender, final Command command, final String alias, final String[] args) {
-        if (!(sender instanceof Player)) {
+        if (!(sender instanceof Player player)) {
             sender.sendMessage("[inventory:stash] Player expected");
             return true;
         }
         if (args.length != 0) return false;
-        Player player = (Player) sender;
+        if (!ServerCategory.current().isSurvival()) {
+            player.sendMessage(text("Stash is only available in survival mode!", RED));
+            return true;
+        }
         if (stashOf(player) != null) return true;
         PluginPlayerEvent.Name.OPEN_STASH.call(plugin, player);
         plugin.database.scheduleAsyncTask(() -> openStashAsync(player));

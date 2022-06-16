@@ -2,14 +2,14 @@ main: com.cavetale.inventory.InventoryPlugin
 name: Inventory
 
 version: 0.1
-api-version: 1.17
+api-version: 1.19
 
 author: StarTux
 description: Store player inventories in a database
 website: https://github.com/StarTux/Inventory
 
 depend: [Core, SQL, Mytems, PlayerCache]
-softdepend: [Connect, Sidebar]
+softdepend: [Sidebar]
 
 commands:
 
@@ -44,6 +44,12 @@ permissions:
 
   inventory.admin:
     description: Use /inventory
+    children:
+      inventory.openstash: true
+    default: op
+
+  inventory.openstash:
+    description: Use /openstash
     default: op
 
   inventory.stash:
@@ -52,6 +58,10 @@ permissions:
 
   inventory.nostore:
     description: Skip inventory storage
+    default: false
+
+  inventory.nobackup:
+    description: Skip inventory backup
     default: false
 
   inventory.mail:

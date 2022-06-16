@@ -1,14 +1,16 @@
 package com.cavetale.inventory;
 
+import com.cavetale.core.connect.Connect;
+import com.cavetale.core.connect.ServerGroup;
+import com.cavetale.core.event.connect.ConnectMessageEvent;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
 import com.cavetale.inventory.storage.PlayerStatusStorage;
-import com.winthier.connect.Connect;
-import com.winthier.connect.event.ConnectMessageEvent;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -43,7 +45,7 @@ public final class InventoryStore implements Listener {
     }
 
     protected void deleteOld() {
-        Date then = new Date(System.currentTimeMillis() - Duration.ofDays(1).toMillis());
+        Date then = Date.from(Instant.now().minus(Duration.ofDays(3)));
         plugin.database.find(SQLInventory.class)
             .isNotNull("claimed")
             .lt("claimed", then)
@@ -72,7 +74,7 @@ public final class InventoryStore implements Listener {
                                         + " items=" + tag.getItemCount()
                                         + " id=" + row.getId()
                                         + " result=" + result);
-                Connect.getInstance().broadcast(MESSAGE_STORED, player.getUniqueId().toString());
+                Connect.get().broadcastMessage(ServerGroup.current(), MESSAGE_STORED, player.getUniqueId().toString());
             });
         InventoryStorage.clear(player.getInventory());
         InventoryStorage.clear(player.getEnderChest());
@@ -163,10 +165,11 @@ public final class InventoryStore implements Listener {
 
     @EventHandler
     protected void onConnectMessage(ConnectMessageEvent event) {
-        if (MESSAGE_STORED.equals(event.getMessage().getChannel())) {
-            UUID uuid = UUID.fromString(event.getMessage().getPayload());
+        if (MESSAGE_STORED.equals(event.getChannel())) {
+            UUID uuid = event.getPayload(UUID.class);
             Player player = Bukkit.getPlayer(uuid);
             if (player == null) return;
+            plugin.getLogger().info("[Store] Update received: " + player.getName());
             loadFromDatabase(player);
         }
     }
