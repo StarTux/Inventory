@@ -83,9 +83,10 @@ public final class DutyCommand extends AbstractCommand<InventoryPlugin> {
                 } else {
                     Location location = row.getLocation();
                     if (location == null) location = Bukkit.getWorlds().get(0).getSpawnLocation();
-                    Perm.get().removeGroup(player.getUniqueId(), "dutymode");
+                    row.setTrack(-1);
+                    plugin.database.update(row, "track");
                     player.bring(plugin, location, player2 -> {
-                            plugin.database.delete(row);
+                            Perm.get().removeGroup(player.getUniqueId(), "dutymode");
                             player2.sendMessage(text("Dutymode disabled", RED));
                         });
                 }

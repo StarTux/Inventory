@@ -67,7 +67,10 @@ public final class InventoryStore implements Listener {
         if (cursor != null && cursor.getType() != Material.AIR) {
             tag.setCursor(ItemStorage.of(cursor));
         }
-        if (tag.isEmpty()) return;
+        if (tag.isEmpty()) {
+            callback.accept(0);
+            return;
+        }
         final UUID uuid = player.getUniqueId();
         InventoryStorage.clear(player.getInventory());
         InventoryStorage.clear(player.getEnderChest());
@@ -77,9 +80,13 @@ public final class InventoryStore implements Listener {
                 SQLTrack trackRow = plugin.database.find(SQLTrack.class)
                     .eq("player", uuid)
                     .findUnique();
-                final int track = trackRow != null
+                int track = trackRow != null
                     ? trackRow.getTrack()
                     : 0;
+                if (track == -1) {
+                    track = 1;
+                    plugin.database.delete(trackRow);
+                }
                 SQLInventory row = new SQLInventory(uuid, track, Json.serialize(tag), tag.getItemCount());
                 int result = plugin.database.insert(row);
                 plugin.getLogger().info("[Store] Stored " + player.getName()
@@ -100,22 +107,33 @@ public final class InventoryStore implements Listener {
                 SQLTrack trackRow = plugin.database.find(SQLTrack.class)
                     .eq("player", uuid)
                     .findUnique();
-                final int track = trackRow != null
+                int track = trackRow != null
                     ? trackRow.getTrack()
                     : 0;
+                if (track == -1) {
+                    plugin.database.delete(trackRow);
+                    runner.main(() -> callback.accept(0));
+                    return;
+                }
                 List<SQLInventory> list = plugin.database.find(SQLInventory.class)
                     .eq("owner", uuid)
                     .isNull("claimed")
                     .eq("track", track)
                     .findList();
-                if (list.isEmpty()) return;
+                if (list.isEmpty()) {
+                    runner.main(() -> callback.accept(0));
+                    return;
+                }
                 Date now = new Date();
                 list.removeIf(it -> {
                         return 0 == plugin.database.update(SQLInventory.class)
                             .row(it)
                             .atomic("claimed", now).sync();
                     });
-                if (list.isEmpty()) return;
+                if (list.isEmpty()) {
+                    runner.main(() -> callback.accept(0));
+                    return;
+                }
                 runner.main(() -> loadFromDatabaseCallback(player, list, callback));
             });
     }
