@@ -24,6 +24,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -82,6 +83,7 @@ public final class InventoryStore implements Listener {
                 SQLInventory row = new SQLInventory(uuid, track, Json.serialize(tag), tag.getItemCount());
                 int result = plugin.database.insert(row);
                 plugin.getLogger().info("[Store] Stored " + player.getName()
+                                        + " track=" + track
                                         + " items=" + tag.getItemCount()
                                         + " id=" + row.getId()
                                         + " result=" + result);
@@ -114,12 +116,12 @@ public final class InventoryStore implements Listener {
                             .atomic("claimed", now).sync();
                     });
                 if (list.isEmpty()) return;
-                runner.main(() -> loadFromDatabaseCallback(player, list, callback));
+                runner.main(() -> loadFromDatabaseCallback(player, list, track, callback));
             });
     }
 
     /** Always called in main thread. */
-    private void loadFromDatabaseCallback(Player player, List<SQLInventory> list, Consumer<Integer> callback) {
+    private void loadFromDatabaseCallback(Player player, List<SQLInventory> list, int track, Consumer<Integer> callback) {
         if (!player.isOnline()) {
             plugin.getLogger().warning("[Store] Player left: "
                                        + player.getName() + ": " + list);
@@ -161,6 +163,7 @@ public final class InventoryStore implements Listener {
                 tag.getStatus().restore(player);
             }
             plugin.getLogger().info("[Store] Restored " + player.getName()
+                                    + " track=" + track
                                     + " items=" + tag.getItemCount()
                                     + " drops=" + drops.size()
                                     + " id=" + row.getId());
@@ -168,14 +171,14 @@ public final class InventoryStore implements Listener {
         if (callback != null) callback.accept(list.size());
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGH)
     protected void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (player.hasPermission(PERM_NOSTORE) && player.isPermissionSet(PERM_NOSTORE)) return;
         loadFromDatabase(player, Runner.ASYNC, null);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGH)
     protected void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         if (player.hasPermission(PERM_NOSTORE) && player.isPermissionSet(PERM_NOSTORE)) return;
