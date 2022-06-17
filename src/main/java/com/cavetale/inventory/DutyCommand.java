@@ -2,6 +2,7 @@ package com.cavetale.inventory;
 
 import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
+import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.connect.Connect;
@@ -44,7 +45,7 @@ public final class DutyCommand extends AbstractCommand<InventoryPlugin> {
                         ? row.getTrack()
                         : 0;
                     boolean hadDuty = track != 0;
-                    duty(player, !hadDuty);
+                    CommandNode.wrap(player, () -> duty(player, !hadDuty));
                 });
             return true;
         } else {
