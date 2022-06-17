@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
@@ -23,6 +24,7 @@ public final class PlayerStatusStorage {
     protected int freezeTicks;
     protected int hotbarSlot;
     protected List<Effect> potionEffects;
+    protected GameMode gameMode;
 
     @AllArgsConstructor @NoArgsConstructor
     private static final class Effect {
@@ -75,6 +77,7 @@ public final class PlayerStatusStorage {
             if (potionEffects == null) potionEffects = new ArrayList<>();
             potionEffects.add(Effect.of(potionEffect));
         }
+        gameMode = player.getGameMode();
     }
 
     public void restore(Player player) {
@@ -93,6 +96,7 @@ public final class PlayerStatusStorage {
         player.setFireTicks(fireTicks);
         player.setFreezeTicks(freezeTicks);
         player.getInventory().setHeldItemSlot(hotbarSlot);
+        if (gameMode != null) player.setGameMode(gameMode);
     }
 
     public static void clear(Player player) {

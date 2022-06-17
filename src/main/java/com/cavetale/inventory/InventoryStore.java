@@ -6,6 +6,7 @@ import com.cavetale.core.event.connect.ConnectMessageEvent;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLInventory;
+import com.cavetale.inventory.sql.SQLTrack;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
 import com.cavetale.inventory.storage.PlayerStatusStorage;
@@ -16,6 +17,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
@@ -55,7 +57,7 @@ public final class InventoryStore implements Listener {
                 });
     }
 
-    protected void storeToDatabase(Player player) {
+    protected void storeToDatabase(Player player, Runner runner, Consumer<Integer> callback) {
         SQLInventory.Tag tag = new SQLInventory.Tag();
         tag.setInventory(InventoryStorage.of(player.getInventory()));
         tag.setEnderChest(InventoryStorage.of(player.getEnderChest()));
@@ -65,29 +67,44 @@ public final class InventoryStore implements Listener {
             tag.setCursor(ItemStorage.of(cursor));
         }
         if (tag.isEmpty()) return;
-        SQLInventory row = new SQLInventory(player.getUniqueId(),
-                                            SQLInventory.Track.SURVIVAL,
-                                            Json.serialize(tag),
-                                            tag.getItemCount());
-        plugin.database.insertAsync(row, result -> {
-                plugin.getLogger().info("[Store] Stored " + player.getName()
-                                        + " items=" + tag.getItemCount()
-                                        + " id=" + row.getId()
-                                        + " result=" + result);
-                Connect.get().broadcastMessage(ServerGroup.current(), MESSAGE_STORED, player.getUniqueId().toString());
-            });
+        final UUID uuid = player.getUniqueId();
         InventoryStorage.clear(player.getInventory());
         InventoryStorage.clear(player.getEnderChest());
         PlayerStatusStorage.clear(player);
         player.getOpenInventory().setCursor(null);
+        runner.sql(() -> {
+                SQLTrack trackRow = plugin.database.find(SQLTrack.class)
+                    .eq("player", uuid)
+                    .findUnique();
+                final int track = trackRow != null
+                    ? trackRow.getTrack()
+                    : 0;
+                SQLInventory row = new SQLInventory(uuid, track, Json.serialize(tag), tag.getItemCount());
+                int result = plugin.database.insert(row);
+                plugin.getLogger().info("[Store] Stored " + player.getName()
+                                        + " items=" + tag.getItemCount()
+                                        + " id=" + row.getId()
+                                        + " result=" + result);
+                runner.main(() -> {
+                        Connect.get().broadcastMessage(ServerGroup.current(), MESSAGE_STORED, uuid.toString());
+                        if (callback != null) callback.accept(result);
+                    });
+            });
     }
 
-    protected void loadFromDatabase(Player player) {
-        plugin.database.scheduleAsyncTask(() -> {
+    protected void loadFromDatabase(Player player, Runner runner, Consumer<Integer> callback) {
+        final UUID uuid = player.getUniqueId();
+        runner.sql(() -> {
+                SQLTrack trackRow = plugin.database.find(SQLTrack.class)
+                    .eq("player", uuid)
+                    .findUnique();
+                final int track = trackRow != null
+                    ? trackRow.getTrack()
+                    : 0;
                 List<SQLInventory> list = plugin.database.find(SQLInventory.class)
-                    .eq("owner", player.getUniqueId())
+                    .eq("owner", uuid)
                     .isNull("claimed")
-                    .eq("track", SQLInventory.Track.SURVIVAL.ordinal())
+                    .eq("track", track)
                     .findList();
                 if (list.isEmpty()) return;
                 Date now = new Date();
@@ -97,11 +114,12 @@ public final class InventoryStore implements Listener {
                             .atomic("claimed", now).sync();
                     });
                 if (list.isEmpty()) return;
-                Bukkit.getScheduler().runTask(plugin, () -> loadFromDatabaseCallback(player, list));
+                runner.main(() -> loadFromDatabaseCallback(player, list, callback));
             });
     }
 
-    private void loadFromDatabaseCallback(Player player, List<SQLInventory> list) {
+    /** Always called in main thread. */
+    private void loadFromDatabaseCallback(Player player, List<SQLInventory> list, Consumer<Integer> callback) {
         if (!player.isOnline()) {
             plugin.getLogger().warning("[Store] Player left: "
                                        + player.getName() + ": " + list);
@@ -147,20 +165,21 @@ public final class InventoryStore implements Listener {
                                     + " drops=" + drops.size()
                                     + " id=" + row.getId());
         }
+        if (callback != null) callback.accept(list.size());
     }
 
     @EventHandler
     protected void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (player.hasPermission(PERM_NOSTORE) && player.isPermissionSet(PERM_NOSTORE)) return;
-        loadFromDatabase(player);
+        loadFromDatabase(player, Runner.ASYNC, null);
     }
 
     @EventHandler
     protected void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         if (player.hasPermission(PERM_NOSTORE) && player.isPermissionSet(PERM_NOSTORE)) return;
-        storeToDatabase(player);
+        storeToDatabase(player, Runner.ASYNC, null);
     }
 
     @EventHandler
@@ -169,8 +188,19 @@ public final class InventoryStore implements Listener {
             UUID uuid = event.getPayload(UUID.class);
             Player player = Bukkit.getPlayer(uuid);
             if (player == null) return;
-            plugin.getLogger().info("[Store] Update received: " + player.getName());
-            loadFromDatabase(player);
+            loadFromDatabase(player, Runner.ASYNC, r -> {
+                    if (r != 0) plugin.getLogger().info("[Store] Update received: " + player.getName());
+                });
         }
+    }
+
+    public void switchTrack(Player player, int track) {
+        storeToDatabase(player, Runner.SYNC, null);
+        if (track == 0) {
+            plugin.database.find(SQLTrack.class).eq("player", player.getUniqueId()).delete();
+        } else {
+            plugin.database.save(new SQLTrack(player, track));
+        }
+        loadFromDatabase(player, Runner.SYNC, null);
     }
 }

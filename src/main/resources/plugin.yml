@@ -40,16 +40,27 @@ commands:
     permission: inventory.mail
     usage: /itemmail
 
+  duty:
+    aliases: []
+    description: Toggle duty mode
+    permission: inventory.duty
+    usage: /duty
+
 permissions:
 
   inventory.admin:
     description: Use /inventory
     children:
       inventory.openstash: true
+      inventory.duty: true
     default: op
 
   inventory.openstash:
     description: Use /openstash
+    default: op
+
+  inventory.duty:
+    description: Use /duty
     default: op
 
   inventory.stash:

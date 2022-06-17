@@ -7,6 +7,7 @@ import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.sql.SQLStash;
+import com.cavetale.inventory.sql.SQLTrack;
 import com.winthier.sql.SQLDatabase;
 import java.util.List;
 import lombok.Getter;
@@ -23,6 +24,7 @@ public final class InventoryPlugin extends JavaPlugin {
     protected Backups backups;
     protected InventoryStore inventoryStore;
     protected final ItemMail itemMail = new ItemMail(this);
+    protected final DutyCommand dutyCommand = new DutyCommand(this);
 
     @Override
     public void onEnable() {
@@ -30,7 +32,11 @@ public final class InventoryPlugin extends JavaPlugin {
             throw new IllegalStateException("Mytems not enabled!");
         }
         instance = this;
-        database.registerTables(List.of(SQLStash.class, SQLBackup.class, SQLInventory.class, SQLItemMail.class));
+        database.registerTables(List.of(SQLStash.class,
+                                        SQLBackup.class,
+                                        SQLInventory.class,
+                                        SQLItemMail.class,
+                                        SQLTrack.class));
         if (!database.createAllTables()) {
             throw new IllegalStateException("Database creation failed!");
         }
@@ -44,6 +50,7 @@ public final class InventoryPlugin extends JavaPlugin {
         inventoryCommand.enable();
         stashCommand.enable();
         openStashCommand.enable();
+        dutyCommand.enable();
         Gui.enable(this);
     }
 
@@ -52,5 +59,13 @@ public final class InventoryPlugin extends JavaPlugin {
         Gui.disable(this);
         database.waitForAsyncTask();
         database.close();
+    }
+
+    protected static SQLDatabase database() {
+        return instance.database;
+    }
+
+    protected static InventoryPlugin instance() {
+        return instance;
     }
 }

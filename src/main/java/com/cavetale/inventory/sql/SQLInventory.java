@@ -3,13 +3,12 @@ package com.cavetale.inventory.sql;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
 import com.cavetale.inventory.storage.PlayerStatusStorage;
+import com.winthier.sql.SQLRow.Key;
+import com.winthier.sql.SQLRow.Name;
+import com.winthier.sql.SQLRow.NotNull;
 import com.winthier.sql.SQLRow;
 import java.util.Date;
 import java.util.UUID;
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.Index;
-import javax.persistence.Table;
 import lombok.Data;
 
 /**
@@ -24,32 +23,17 @@ import lombok.Data;
  * claimed field (which is optimistically locked) set, and the items
  * put in the player's inventory.
  */
-@Table(name = "inventories",
-       indexes = {
-           @Index(unique = false, name = "owner", columnList = "owner"),
-           @Index(unique = false, name = "claimed", columnList = "claimed"),
-       })
-@Data
+@Data @NotNull @Name("inventories")
+@Key({"owner", "claimed", "track"})
+@Key("claimed")
 public final class SQLInventory implements SQLRow {
-    @Id
-    private Integer id;
-    @Column(nullable = false)
+    @Id private Integer id;
     private UUID owner;
-    @Column(nullable = false)
     private int track;
-    @Column(nullable = false, length = 16777215) // MEDIUMTEXT
-    private String json;
-    @Column(nullable = false)
+    @MediumText private String json;
     private int itemCount;
-    @Column(nullable = false)
     private Date created;
-    @Column(nullable = true)
-    private Date claimed;
-
-    public enum Track {
-        SURVIVAL,
-        DUTYMODE;
-    }
+    @Nullable private Date claimed;
 
     @Data
     public static final class Tag {
@@ -74,16 +58,12 @@ public final class SQLInventory implements SQLRow {
 
     public SQLInventory() { }
 
-    public SQLInventory(final UUID owner, final Track track, final String json, final int itemCount) {
+    public SQLInventory(final UUID owner, final int track, final String json, final int itemCount) {
         this.owner = owner;
-        this.track = track.ordinal();
+        this.track = track;
         this.json = json;
         this.itemCount = itemCount;
         this.created = new Date();
         this.claimed = null;
-    }
-
-    public Track getTrackEnum() {
-        return Track.values()[track];
     }
 }
