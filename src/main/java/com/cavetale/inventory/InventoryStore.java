@@ -116,12 +116,12 @@ public final class InventoryStore implements Listener {
                             .atomic("claimed", now).sync();
                     });
                 if (list.isEmpty()) return;
-                runner.main(() -> loadFromDatabaseCallback(player, list, track, callback));
+                runner.main(() -> loadFromDatabaseCallback(player, list, callback));
             });
     }
 
     /** Always called in main thread. */
-    private void loadFromDatabaseCallback(Player player, List<SQLInventory> list, int track, Consumer<Integer> callback) {
+    private void loadFromDatabaseCallback(Player player, List<SQLInventory> list, Consumer<Integer> callback) {
         if (!player.isOnline()) {
             plugin.getLogger().warning("[Store] Player left: "
                                        + player.getName() + ": " + list);
@@ -163,7 +163,7 @@ public final class InventoryStore implements Listener {
                 tag.getStatus().restore(player);
             }
             plugin.getLogger().info("[Store] Restored " + player.getName()
-                                    + " track=" + track
+                                    + " track=" + row.getTrack()
                                     + " items=" + tag.getItemCount()
                                     + " drops=" + drops.size()
                                     + " id=" + row.getId());
