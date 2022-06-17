@@ -68,7 +68,7 @@ public final class InventoryStore implements Listener {
             tag.setCursor(ItemStorage.of(cursor));
         }
         if (tag.isEmpty()) {
-            callback.accept(0);
+            if (callback != null) callback.accept(0);
             return;
         }
         final UUID uuid = player.getUniqueId();
@@ -112,7 +112,9 @@ public final class InventoryStore implements Listener {
                     : 0;
                 if (track == -1) {
                     plugin.database.delete(trackRow);
-                    runner.main(() -> callback.accept(0));
+                    if (callback != null) {
+                        runner.main(() -> callback.accept(0));
+                    }
                     return;
                 }
                 List<SQLInventory> list = plugin.database.find(SQLInventory.class)
@@ -121,7 +123,9 @@ public final class InventoryStore implements Listener {
                     .eq("track", track)
                     .findList();
                 if (list.isEmpty()) {
-                    runner.main(() -> callback.accept(0));
+                    if (callback != null) {
+                        runner.main(() -> callback.accept(0));
+                    }
                     return;
                 }
                 Date now = new Date();
@@ -131,7 +135,9 @@ public final class InventoryStore implements Listener {
                             .atomic("claimed", now).sync();
                     });
                 if (list.isEmpty()) {
-                    runner.main(() -> callback.accept(0));
+                    if (callback != null) {
+                        runner.main(() -> callback.accept(0));
+                    }
                     return;
                 }
                 runner.main(() -> loadFromDatabaseCallback(player, list, callback));
