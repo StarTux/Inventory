@@ -10,6 +10,7 @@ import com.winthier.sql.SQLRow;
 import java.util.Date;
 import java.util.UUID;
 import lombok.Data;
+import org.bukkit.GameMode;
 
 /**
  * Stores entire player inventories in the database.  Contents
@@ -32,6 +33,7 @@ public final class SQLInventory implements SQLRow {
     private int track;
     @MediumText private String json;
     private int itemCount;
+    @Nullable private GameMode gameMode;
     private Date created;
     @Nullable private Date claimed;
 

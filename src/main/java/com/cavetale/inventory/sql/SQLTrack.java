@@ -12,11 +12,15 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
+/**
+ * Store tracks for each player.  Absence of a row implies track 0.
+ * Effectively only players in duty mode will have track 1.
+ */
 @Data @NotNull @Name("tracks")
 public final class SQLTrack implements SQLRow {
     @Id private Integer id;
     @Unique private UUID player;
-    private int track;
+    @Keyed private int track;
     @VarChar(40) private String server;
     @VarChar(40) private String world;
     private double x;

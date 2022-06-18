@@ -14,13 +14,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -41,10 +44,24 @@ public final class InventoryStore implements Listener {
     private static final String PERM_NOSTORE = "inventory.nostore";
     private static final String MESSAGE_STORED = "inventory:stored";
     private final InventoryPlugin plugin;
+    /**
+     * The tracks map scores player tracks while the player is online.
+     *
+     * Entries are only added by enable() and
+     * loadFromDatabaseCallback().
+     *
+     * Entries are only removed by onPlayerQuit() and switchTrack().
+     */
+    private final Map<UUID, SQLTrack> tracks = new HashMap<>();
 
     protected void enable() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
         deleteOld();
+        for (SQLTrack track : plugin.database.find(SQLTrack.class).findList()) {
+            if (Bukkit.getPlayer(track.getPlayer()) != null) {
+                tracks.put(track.getPlayer(), track);
+            }
+        }
     }
 
     protected void deleteOld() {
@@ -58,7 +75,15 @@ public final class InventoryStore implements Listener {
                 });
     }
 
-    protected void storeToDatabase(Player player, Runner runner, Consumer<Integer> callback) {
+    /**
+     * Called during logout or player switch.
+     */
+    private void storeToDatabase(Player player, Runner runner, SQLTrack trackRow, boolean withGameMode, Consumer<Integer> callback) {
+        final UUID uuid = player.getUniqueId();
+        final String name = player.getName();
+        final int track = trackRow != null
+            ? trackRow.getTrack()
+            : 0;
         SQLInventory.Tag tag = new SQLInventory.Tag();
         tag.setInventory(InventoryStorage.of(player.getInventory()));
         tag.setEnderChest(InventoryStorage.of(player.getEnderChest()));
@@ -71,90 +96,108 @@ public final class InventoryStore implements Listener {
             if (callback != null) callback.accept(0);
             return;
         }
-        final UUID uuid = player.getUniqueId();
         InventoryStorage.clear(player.getInventory());
         InventoryStorage.clear(player.getEnderChest());
         PlayerStatusStorage.clear(player);
         player.getOpenInventory().setCursor(null);
+        GameMode gameMode = withGameMode || track == 1
+            ? player.getGameMode()
+            : null;
         runner.sql(() -> {
-                SQLTrack trackRow = plugin.database.find(SQLTrack.class)
-                    .eq("player", uuid)
-                    .findUnique();
-                int track = trackRow != null
-                    ? trackRow.getTrack()
-                    : 0;
-                if (track == -1) {
-                    track = 1;
-                    plugin.database.delete(trackRow);
-                }
-                SQLInventory row = new SQLInventory(uuid, track, Json.serialize(tag), tag.getItemCount());
-                int result = plugin.database.insert(row);
-                plugin.getLogger().info("[Store] Stored " + player.getName()
-                                        + " track=" + track
-                                        + " items=" + tag.getItemCount()
-                                        + " id=" + row.getId()
-                                        + " result=" + result);
-                runner.main(() -> {
-                        Connect.get().broadcastMessage(ServerGroup.current(), MESSAGE_STORED, uuid.toString());
-                        if (callback != null) callback.accept(result);
-                    });
+                storeToDatabase(uuid, name, runner, trackRow, tag, gameMode, callback);
             });
     }
 
-    protected void loadFromDatabase(Player player, Runner runner, Consumer<Integer> callback) {
+    /**
+     * Called only by the method above.
+     */
+    private void storeToDatabase(UUID uuid, String name, Runner runner, SQLTrack trackRow,
+                                 SQLInventory.Tag tag, GameMode gameMode, Consumer<Integer> callback) {
+        final int track = trackRow != null
+            ? trackRow.getTrack()
+            : 0;
+        SQLInventory row = new SQLInventory(uuid, track, Json.serialize(tag), tag.getItemCount());
+        row.setGameMode(gameMode);
+        int result = plugin.database.insert(row);
+        plugin.getLogger().info("[Store] Stored " + name
+                                + " track=" + track
+                                + " items=" + tag.getItemCount()
+                                + " id=" + row.getId()
+                                + " result=" + result);
+        runner.main(() -> {
+                Connect.get().broadcastMessage(ServerGroup.current(), MESSAGE_STORED, uuid.toString());
+                if (callback != null) callback.accept(result);
+            });
+    }
+
+    /**
+     * Called during login or refresh.
+     */
+    private void loadFromDatabase(Player player, Runner runner, Consumer<Integer> callback) {
         final UUID uuid = player.getUniqueId();
+        final String name = player.getName();
         runner.sql(() -> {
                 SQLTrack trackRow = plugin.database.find(SQLTrack.class)
                     .eq("player", uuid)
                     .findUnique();
-                int track = trackRow != null
-                    ? trackRow.getTrack()
-                    : 0;
-                if (track == -1) {
-                    plugin.database.delete(trackRow);
-                    if (callback != null) {
-                        runner.main(() -> callback.accept(0));
-                    }
-                    return;
-                }
-                List<SQLInventory> list = plugin.database.find(SQLInventory.class)
-                    .eq("owner", uuid)
-                    .isNull("claimed")
-                    .eq("track", track)
-                    .findList();
-                if (list.isEmpty()) {
-                    if (callback != null) {
-                        runner.main(() -> callback.accept(0));
-                    }
-                    return;
-                }
-                Date now = new Date();
-                list.removeIf(it -> {
-                        return 0 == plugin.database.update(SQLInventory.class)
-                            .row(it)
-                            .atomic("claimed", now).sync();
-                    });
-                if (list.isEmpty()) {
-                    if (callback != null) {
-                        runner.main(() -> callback.accept(0));
-                    }
-                    return;
-                }
-                runner.main(() -> loadFromDatabaseCallback(player, list, callback));
+                loadFromDatabase(uuid, name, runner, trackRow, callback);
             });
+    }
+
+    /**
+     * Called in sql thread during login by method above.  Called in
+     * main thread during switch.
+     */
+    private void loadFromDatabase(UUID uuid, String name, Runner runner, SQLTrack trackRow, Consumer<Integer> callback) {
+        int track = trackRow != null
+            ? trackRow.getTrack()
+            : 0;
+        List<SQLInventory> list = plugin.database.find(SQLInventory.class)
+            .eq("owner", uuid)
+            .isNull("claimed")
+            .eq("track", track)
+            .findList();
+        if (list.isEmpty()) {
+            if (callback != null) {
+                runner.main(() -> callback.accept(0));
+            }
+            return;
+        }
+        Date now = new Date();
+        list.removeIf(it -> {
+                return 0 == plugin.database.update(SQLInventory.class)
+                    .row(it)
+                    .atomic("claimed", now).sync();
+            });
+        if (list.isEmpty()) {
+            if (callback != null) {
+                runner.main(() -> callback.accept(0));
+            }
+            return;
+        }
+        runner.main(() -> loadFromDatabaseCallback(uuid, name, list, trackRow, callback));
     }
 
     /** Always called in main thread. */
-    private void loadFromDatabaseCallback(Player player, List<SQLInventory> list, Consumer<Integer> callback) {
-        if (!player.isOnline()) {
-            plugin.getLogger().warning("[Store] Player left: "
-                                       + player.getName() + ": " + list);
+    private void loadFromDatabaseCallback(UUID uuid, String name, List<SQLInventory> list, SQLTrack trackRow, Consumer<Integer> callback) {
+        final Player player = Bukkit.getPlayer(uuid);
+        if (player == null || !player.isOnline()) {
+            plugin.getLogger().warning("[Store] Player left: " + name + ": " + list);
             for (SQLInventory row : list) {
                 row.setClaimed(null);
                 plugin.database.updateAsync(row, null, "claimed");
             }
             return;
         }
+        if (tracks.containsKey(uuid) && !Objects.equals(trackRow, tracks.get(uuid))) {
+            plugin.getLogger().warning("[Store] Conflicting track exists: " + name + ": " + trackRow + "/" + tracks.get(uuid) + ", " + list);
+            for (SQLInventory row : list) {
+                row.setClaimed(null);
+                plugin.database.updateAsync(row, null, "claimed");
+            }
+            return;
+        }
+        if (trackRow != null) tracks.put(uuid, trackRow);
         for (SQLInventory row : list) {
             final SQLInventory.Tag tag;
             List<ItemStack> drops = new ArrayList<>();
@@ -179,17 +222,19 @@ public final class InventoryStore implements Listener {
                 for (ItemStack it : drops) {
                     drops2.add(ItemStorage.of(it));
                 }
-                SQLItemMail mail = new SQLItemMail(SQLItemMail.SERVER_UUID, player.getUniqueId(), drops2,
+                SQLItemMail mail = new SQLItemMail(SQLItemMail.SERVER_UUID, uuid, drops2,
                                                    text("You dropped this earlier"));
                 plugin.database.insertAsync(mail, null);
             }
             if (tag.getStatus() != null) {
                 tag.getStatus().restore(player);
             }
+            if (row.getGameMode() != null) player.setGameMode(row.getGameMode());
             plugin.getLogger().info("[Store] Restored " + player.getName()
                                     + " track=" + row.getTrack()
                                     + " items=" + tag.getItemCount()
                                     + " drops=" + drops.size()
+                                    + " gamemode=" + row.getGameMode()
                                     + " id=" + row.getId());
         }
         if (callback != null) callback.accept(list.size());
@@ -206,9 +251,12 @@ public final class InventoryStore implements Listener {
     protected void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         if (player.hasPermission(PERM_NOSTORE) && player.isPermissionSet(PERM_NOSTORE)) return;
-        storeToDatabase(player, Runner.ASYNC, null);
+        storeToDatabase(player, Runner.ASYNC, tracks.remove(player.getUniqueId()), false, null);
     }
 
+    /**
+     * Refresh a logged in player.
+     */
     @EventHandler
     protected void onConnectMessage(ConnectMessageEvent event) {
         if (MESSAGE_STORED.equals(event.getChannel())) {
@@ -221,13 +269,22 @@ public final class InventoryStore implements Listener {
         }
     }
 
-    public void switchTrack(Player player, int track) {
-        storeToDatabase(player, Runner.SYNC, null);
-        if (track == 0) {
-            plugin.database.find(SQLTrack.class).eq("player", player.getUniqueId()).delete();
+    public void switchTrack(Player player, int newTrack) {
+        final UUID uuid = player.getUniqueId();
+        final String name = player.getName();
+        SQLTrack oldTrackRow = tracks.remove(uuid);
+        int oldTrack = oldTrackRow != null
+            ? oldTrackRow.getTrack()
+            : 0;
+        storeToDatabase(player, Runner.SYNC, oldTrackRow, true, null);
+        final SQLTrack newTrackRow;
+        if (newTrack == 0) {
+            plugin.database.delete(oldTrackRow);
+            newTrackRow = null;
         } else {
-            plugin.database.save(new SQLTrack(player, track));
+            newTrackRow = new SQLTrack(player, newTrack);
+            plugin.database.save(newTrackRow);
         }
-        loadFromDatabase(player, Runner.SYNC, null);
+        loadFromDatabase(uuid, name, Runner.SYNC, newTrackRow, null);
     }
 }

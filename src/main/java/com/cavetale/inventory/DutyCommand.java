@@ -63,7 +63,7 @@ public final class DutyCommand extends AbstractCommand<InventoryPlugin> {
                 plugin.database.save(new SQLTrack(player.getPlayer(), 1));
             }
             Perm.get().addGroup(player.getUniqueId(), "dutymode");
-            player.sendMessage(text("Dutymode enabled", GREEN));
+            player.sendMessage(text("Dutymode enabled", AQUA));
             return;
         }
         plugin.database.find(SQLTrack.class).eq("player", player.getUniqueId()).findUniqueAsync(row -> {
@@ -71,7 +71,7 @@ public final class DutyCommand extends AbstractCommand<InventoryPlugin> {
                 if (player.isPlayer() && !row.isThisServer() && Connect.get().getOnlineServerNames().contains(row.getServer())) {
                     Connect.get().dispatchRemoteCommand(player.getPlayer(), "duty", row.getServer());
                 } else if (player.isPlayer()) {
-                    Perm.get().removeGroup(player.getUniqueId(), "dutymode");
+                    // Online
                     Location location = row.getLocation();
                     if (location != null) player.getPlayer().teleport(location, TeleportCause.COMMAND);
                     if (plugin.inventoryStore != null) {
@@ -79,15 +79,20 @@ public final class DutyCommand extends AbstractCommand<InventoryPlugin> {
                     } else {
                         plugin.database.delete(row);
                     }
-                    player.sendMessage(text("Dutymode disabled", RED));
+                    Perm.get().removeGroup(player.getUniqueId(), "dutymode");
+                    player.sendMessage(text("Dutymode disabled", YELLOW));
                 } else {
+                    // Remote
                     Location location = row.getLocation();
                     if (location == null) location = Bukkit.getWorlds().get(0).getSpawnLocation();
-                    row.setTrack(-1);
-                    plugin.database.update(row, "track");
                     player.bring(plugin, location, player2 -> {
+                            if (player2 == null) {
+                                player.sendMessage(text("Something went wrong!", RED));
+                                return;
+                            }
+                            plugin.database.delete(row); // BEFORE onPlayerJoin() in Store
                             Perm.get().removeGroup(player.getUniqueId(), "dutymode");
-                            player2.sendMessage(text("Dutymode disabled", RED));
+                            player2.sendMessage(text("Dutymode disabled", YELLOW));
                         });
                 }
             });
