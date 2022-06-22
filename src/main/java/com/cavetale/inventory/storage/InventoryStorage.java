@@ -31,10 +31,10 @@ public final class InventoryStorage {
      * Restore this inventory storage into an actual inventory.
      * @param inventory the inventory to store the items in
      * @param name the name of this operation for debug logging
-     * @return List of items that didn't fit.
+     * @return List of items that did not fit.
      */
     public List<ItemStack> restore(Inventory inventory, String name) {
-        // Remain stores the items that didn't fit at first try
+        // Remain stores the items that did not fit at first try
         List<ItemStack> remain = new ArrayList<>();
         for (ItemStorage itemStorage : items) {
             ItemStack itemStack;
@@ -96,7 +96,9 @@ public final class InventoryStorage {
     public Inventory toInventory() {
         int invSize = ((size - 1) / 9 + 1) * 9;
         Inventory inventory = Bukkit.createInventory(null, invSize);
-        restore(inventory, "toInventory");
+        for (ItemStack remain : restore(inventory, "toInventory")) {
+            inventory.addItem(remain);
+        }
         return inventory;
     }
 

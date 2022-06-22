@@ -33,7 +33,7 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.*;
 
 public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yy/MM/dd hh:mm");
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yy/MM/dd HH:mm");
 
     protected InventoryCommand(final InventoryPlugin plugin) {
         super(plugin, "inventory");
@@ -90,6 +90,15 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
             .description("Transfer inventories")
             .completers(PlayerCache.NAME_COMPLETER, PlayerCache.NAME_COMPLETER)
             .senderCaller(this::storeTransfer);
+        storeNode.addChild("list").arguments("<player>")
+            .description("List inventory stores")
+            .senderCaller(this::storeList);
+        storeNode.addChild("open").arguments("<id>")
+            .description("Open inventory store")
+            .playerCaller(this::storeOpen);
+        storeNode.addChild("openender").arguments("<id>")
+            .description("Open ender store")
+            .playerCaller(this::storeOpenEnder);
     }
 
     protected boolean stashTransfer(CommandSender sender, String[] args) {
@@ -311,5 +320,69 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         sender.sendMessage(text("Inventories transferred from " + from.name + " to " + to.name + ":"
                                 + " rows=" + count, YELLOW));
         return true;
+    }
+
+    protected boolean storeList(CommandSender sender, String[] args) {
+        if (args.length != 1) return false;
+        String ownerName = args[0];
+        PlayerCache owner = PlayerCache.forArg(args[0]);
+        if (owner == null) throw new CommandWarn("Player not found: " + ownerName);
+        plugin.database.find(SQLInventory.class)
+            .eq("owner", owner.uuid)
+            .orderByAscending("claimed")
+            .select("id", "track", "itemCount", "created", "claimed")
+            .findListAsync(list -> {
+                    sender.sendMessage(text("Found: " + list.size(), YELLOW));
+                    for (SQLInventory row : list) {
+                        String openCmd = "/inventory store open " + row.getId();
+                        sender.sendMessage(join(noSeparators(),
+                                                text("#" + row.getId(), YELLOW),
+                                                text(" track:", GRAY),
+                                                text(row.getTrack(), WHITE),
+                                                text(" items:", GRAY),
+                                                text(row.getItemCount(), WHITE),
+                                                text(" created:", GRAY),
+                                                text(DATE_FORMAT.format(row.getCreated()), WHITE))
+                                           .clickEvent(ClickEvent.suggestCommand(openCmd))
+                                           .hoverEvent(HoverEvent.showText(text(openCmd, YELLOW))));
+                    }
+                });
+        return true;
+    }
+
+    protected boolean storeOpen(Player player, String[] args) {
+        if (args.length != 1) return false;
+        String idString = args[0];
+        final int id = CommandArgCompleter.requireInt(args[0], i -> i > 0);
+        storeOpen(player, id, false);
+        return true;
+    }
+
+    protected boolean storeOpenEnder(Player player, String[] args) {
+        if (args.length != 1) return false;
+        String idString = args[0];
+        final int id = CommandArgCompleter.requireInt(args[0], i -> i > 0);
+        storeOpen(player, id, true);
+        return true;
+    }
+
+    private void storeOpen(Player player, int id, boolean ender) {
+        plugin.database.find(SQLInventory.class)
+            .idEq(id)
+            .findUniqueAsync(row -> {
+                    if (row == null) {
+                        player.sendMessage(text("Inventory not found: #" + id, RED));
+                        return;
+                    }
+                    player.sendMessage(text(" #" + row.getId(), YELLOW)
+                                       .append(text(" " + row.getItemCount(), GRAY))
+                                       .append(text(" " + DATE_FORMAT.format(row.getCreated()), WHITE)));
+                    final SQLInventory.Tag tag = Json.deserialize(row.getJson(), SQLInventory.Tag.class);
+                    Inventory inventory = !ender
+                        ? tag.getInventory().toInventory()
+                        : tag.getEnderChest().toInventory();
+                    player.sendMessage(text("Opening...", YELLOW));
+                    player.openInventory(inventory);
+                });
     }
 }
