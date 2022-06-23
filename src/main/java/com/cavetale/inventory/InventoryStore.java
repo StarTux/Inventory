@@ -279,7 +279,7 @@ public final class InventoryStore implements Listener {
         storeToDatabase(player, Runner.SYNC, oldTrackRow, true, null);
         final SQLTrack newTrackRow;
         if (newTrack == 0) {
-            plugin.database.delete(oldTrackRow);
+            if (oldTrackRow != null) plugin.database.delete(oldTrackRow);
             newTrackRow = null;
         } else {
             newTrackRow = new SQLTrack(player, newTrack);
