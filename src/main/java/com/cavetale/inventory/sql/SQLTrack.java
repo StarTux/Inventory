@@ -55,7 +55,7 @@ public final class SQLTrack implements SQLRow {
         return new Location(w, x, y, z, yaw, pitch);
     }
 
-    public boolean isThisServer() {
+    public boolean isOnThisServer() {
         return server.equals(NetworkServer.current().registeredName);
     }
 }

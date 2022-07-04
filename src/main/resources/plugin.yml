@@ -63,16 +63,12 @@ permissions:
     description: Use /duty
     default: op
 
+  inventory.duty.op:
+    description: Use /duty
+    default: op
+
   inventory.stash:
     description: Use /stash
-    default: false
-
-  inventory.nostore:
-    description: Skip inventory storage
-    default: false
-
-  inventory.nobackup:
-    description: Skip inventory backup
     default: false
 
   inventory.mail:

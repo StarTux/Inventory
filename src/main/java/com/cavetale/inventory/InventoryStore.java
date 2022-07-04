@@ -1,8 +1,12 @@
 package com.cavetale.inventory;
 
+import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.connect.Connect;
 import com.cavetale.core.connect.ServerGroup;
 import com.cavetale.core.event.connect.ConnectMessageEvent;
+import com.cavetale.core.event.hud.PlayerHudEvent;
+import com.cavetale.core.event.hud.PlayerHudPriority;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLInventory;
@@ -22,8 +26,11 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -31,8 +38,11 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.inventory.ItemStack;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
+import static net.kyori.adventure.text.format.TextDecoration.*;
 
 /**
  * This class, when activated, will take care of player inventories so
@@ -41,27 +51,26 @@ import static net.kyori.adventure.text.Component.text;
  */
 @RequiredArgsConstructor
 public final class InventoryStore implements Listener {
-    private static final String PERM_NOSTORE = "inventory.nostore";
     private static final String MESSAGE_STORED = "inventory:stored";
     private final InventoryPlugin plugin;
-    /**
-     * The tracks map scores player tracks while the player is online.
-     *
-     * Entries are only added by enable() and
-     * loadFromDatabaseCallback().
-     *
-     * Entries are only removed by onPlayerQuit() and switchTrack().
-     */
-    private final Map<UUID, SQLTrack> tracks = new HashMap<>();
+    private final Map<UUID, StoreSession> sessions = new HashMap<>();
+    private boolean disabled;
 
     protected void enable() {
         Bukkit.getPluginManager().registerEvents(this, plugin);
         deleteOld();
-        for (SQLTrack track : plugin.database.find(SQLTrack.class).findList()) {
-            if (Bukkit.getPlayer(track.getPlayer()) != null) {
-                tracks.put(track.getPlayer(), track);
-            }
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            sessions.put(player.getUniqueId(), new StoreSession(player.getUniqueId(), player.getName()));
         }
+        for (SQLTrack track : plugin.database.find(SQLTrack.class).findList()) {
+            StoreSession session = sessions.get(track.getPlayer());
+            if (session != null) session.trackRow = track;
+        }
+    }
+
+    protected void disable() {
+        sessions.clear();
+        disabled = true;
     }
 
     protected void deleteOld() {
@@ -76,14 +85,12 @@ public final class InventoryStore implements Listener {
     }
 
     /**
+     * Store and clear inventory.
      * Called during logout or player switch.
      */
-    private void storeToDatabase(Player player, Runner runner, SQLTrack trackRow, boolean withGameMode, Consumer<Integer> callback) {
+    private void storeToDatabase(Player player, StoreSession session, Runner runner, boolean withGameMode, Consumer<Integer> callback) {
         final UUID uuid = player.getUniqueId();
         final String name = player.getName();
-        final int track = trackRow != null
-            ? trackRow.getTrack()
-            : 0;
         SQLInventory.Tag tag = new SQLInventory.Tag();
         tag.setInventory(InventoryStorage.of(player.getInventory()));
         tag.setEnderChest(InventoryStorage.of(player.getEnderChest()));
@@ -100,32 +107,28 @@ public final class InventoryStore implements Listener {
         InventoryStorage.clear(player.getEnderChest());
         PlayerStatusStorage.clear(player);
         player.getOpenInventory().setCursor(null);
-        GameMode gameMode = withGameMode || track == 1
+        GameMode gameMode = withGameMode || session.getTrack() == 1
             ? player.getGameMode()
             : null;
         runner.sql(() -> {
-                storeToDatabase(uuid, name, runner, trackRow, tag, gameMode, callback);
+                storeToDatabaseSQL(session, runner, tag, gameMode, callback);
             });
     }
 
     /**
-     * Called only by the method above.
+     * Called only by the method above, in the sql thread.
      */
-    private void storeToDatabase(UUID uuid, String name, Runner runner, SQLTrack trackRow,
-                                 SQLInventory.Tag tag, GameMode gameMode, Consumer<Integer> callback) {
-        final int track = trackRow != null
-            ? trackRow.getTrack()
-            : 0;
-        SQLInventory row = new SQLInventory(uuid, track, Json.serialize(tag), tag.getItemCount());
+    private void storeToDatabaseSQL(StoreSession session, Runner runner, SQLInventory.Tag tag, GameMode gameMode, Consumer<Integer> callback) {
+        SQLInventory row = new SQLInventory(session.uuid, session.getTrack(), Json.serialize(tag), tag.getItemCount());
         row.setGameMode(gameMode);
         int result = plugin.database.insert(row);
-        plugin.getLogger().info("[Store] Stored " + name
-                                + " track=" + track
+        plugin.getLogger().info("[Store] Stored " + session
                                 + " items=" + tag.getItemCount()
+                                + (gameMode != null ? " gamemode=" + gameMode : "")
                                 + " id=" + row.getId()
                                 + " result=" + result);
         runner.main(() -> {
-                Connect.get().broadcastMessage(ServerGroup.current(), MESSAGE_STORED, uuid.toString());
+                Connect.get().broadcastMessage(ServerGroup.current(), MESSAGE_STORED, session.uuid.toString());
                 if (callback != null) callback.accept(result);
             });
     }
@@ -133,29 +136,38 @@ public final class InventoryStore implements Listener {
     /**
      * Called during login or refresh.
      */
-    private void loadFromDatabase(Player player, Runner runner, Consumer<Integer> callback) {
-        final UUID uuid = player.getUniqueId();
-        final String name = player.getName();
+    private void loadFromDatabase(StoreSession session) {
+        if (session.loading) {
+            session.scheduled = true;
+            return;
+        }
+        session.loading = true;
+        Runner runner = Runner.ASYNC;
         runner.sql(() -> {
-                SQLTrack trackRow = plugin.database.find(SQLTrack.class)
-                    .eq("player", uuid)
-                    .findUnique();
-                loadFromDatabase(uuid, name, runner, trackRow, callback);
+                if (!session.loaded) {
+                    session.loaded = true;
+                    session.trackRow = plugin.database.find(SQLTrack.class)
+                        .eq("player", session.uuid)
+                        .findUnique();
+                }
+                loadFromDatabaseWithTrack(session, runner, r -> {
+                        session.loading = false;
+                        if (session.scheduled) {
+                            session.scheduled = false;
+                            loadFromDatabase(session);
+                        }
+                    });
             });
     }
 
     /**
-     * Called in sql thread during login by method above.  Called in
-     * main thread during switch.
+     * Called in sql thread during when the track is already known.
      */
-    private void loadFromDatabase(UUID uuid, String name, Runner runner, SQLTrack trackRow, Consumer<Integer> callback) {
-        int track = trackRow != null
-            ? trackRow.getTrack()
-            : 0;
+    private void loadFromDatabaseWithTrack(StoreSession session, Runner runner, Consumer<Integer> callback) {
         List<SQLInventory> list = plugin.database.find(SQLInventory.class)
-            .eq("owner", uuid)
+            .eq("owner", session.uuid)
             .isNull("claimed")
-            .eq("track", track)
+            .eq("track", session.getTrack())
             .findList();
         if (list.isEmpty()) {
             if (callback != null) {
@@ -163,7 +175,7 @@ public final class InventoryStore implements Listener {
             }
             return;
         }
-        Date now = new Date();
+        final Date now = new Date();
         list.removeIf(it -> {
                 return 0 == plugin.database.update(SQLInventory.class)
                     .row(it)
@@ -175,29 +187,31 @@ public final class InventoryStore implements Listener {
             }
             return;
         }
-        runner.main(() -> loadFromDatabaseCallback(uuid, name, list, trackRow, callback));
+        runner.main(() -> loadFromDatabaseCallback(session, list, callback));
     }
 
     /** Always called in main thread. */
-    private void loadFromDatabaseCallback(UUID uuid, String name, List<SQLInventory> list, SQLTrack trackRow, Consumer<Integer> callback) {
-        final Player player = Bukkit.getPlayer(uuid);
+    private void loadFromDatabaseCallback(StoreSession session, List<SQLInventory> list, Consumer<Integer> callback) {
+        if (disabled || session.disabled) {
+            plugin.getLogger().warning("[Store] Disabled: " + session.name + ": " + list);
+            for (SQLInventory row : list) {
+                row.setClaimed(null);
+                plugin.database.update(row, "claimed");
+            }
+            callback.accept(0);
+            return;
+        }
+        final Player player = Bukkit.getPlayer(session.uuid);
         if (player == null || !player.isOnline()) {
-            plugin.getLogger().warning("[Store] Player left: " + name + ": " + list);
+            plugin.getLogger().warning("[Store] Player left: " + session.name + ": " + list);
             for (SQLInventory row : list) {
                 row.setClaimed(null);
                 plugin.database.updateAsync(row, null, "claimed");
             }
+            callback.accept(0);
             return;
         }
-        if (tracks.containsKey(uuid) && !Objects.equals(trackRow, tracks.get(uuid))) {
-            plugin.getLogger().warning("[Store] Conflicting track exists: " + name + ": " + trackRow + "/" + tracks.get(uuid) + ", " + list);
-            for (SQLInventory row : list) {
-                row.setClaimed(null);
-                plugin.database.updateAsync(row, null, "claimed");
-            }
-            return;
-        }
-        if (trackRow != null) tracks.put(uuid, trackRow);
+        // Restore
         for (SQLInventory row : list) {
             final SQLInventory.Tag tag;
             List<ItemStack> drops = new ArrayList<>();
@@ -222,7 +236,7 @@ public final class InventoryStore implements Listener {
                 for (ItemStack it : drops) {
                     drops2.add(ItemStorage.of(it));
                 }
-                SQLItemMail mail = new SQLItemMail(SQLItemMail.SERVER_UUID, uuid, drops2,
+                SQLItemMail mail = new SQLItemMail(SQLItemMail.SERVER_UUID, session.uuid, drops2,
                                                    text("You dropped this earlier"));
                 plugin.database.insertAsync(mail, null);
             }
@@ -237,21 +251,41 @@ public final class InventoryStore implements Listener {
                                     + " gamemode=" + row.getGameMode()
                                     + " id=" + row.getId());
         }
-        if (callback != null) callback.accept(list.size());
+        if (session.isInDutymode() && player.hasPermission("inventory.duty.op")) {
+            player.setOp(true);
+        } else {
+            player.setOp(false);
+        }
+        callback.accept(list.size());
     }
 
     @EventHandler(priority = EventPriority.HIGH)
-    protected void onPlayerJoin(PlayerJoinEvent event) {
+    private void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        if (player.hasPermission(PERM_NOSTORE) && player.isPermissionSet(PERM_NOSTORE)) return;
-        loadFromDatabase(player, Runner.ASYNC, null);
+        StoreSession session = new StoreSession(player.getUniqueId(), player.getName());
+        sessions.put(session.uuid, session);
+        loadFromDatabase(session);
     }
 
     @EventHandler(priority = EventPriority.HIGH)
-    protected void onPlayerQuit(PlayerQuitEvent event) {
+    private void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        if (player.hasPermission(PERM_NOSTORE) && player.isPermissionSet(PERM_NOSTORE)) return;
-        storeToDatabase(player, Runner.ASYNC, tracks.remove(player.getUniqueId()), false, null);
+        StoreSession session = sessions.remove(player.getUniqueId());
+        if (session == null) return;
+        session.disabled = true;
+        storeToDatabase(player, session, Runner.ASYNC, false, null);
+    }
+
+    @EventHandler
+    private void onPlayerHud(PlayerHudEvent event) {
+        StoreSession session = sessions.get(event.getPlayer().getUniqueId());
+        if (session == null || !session.isInDutymode()) return;
+        Component message = event.getPlayer().isOp()
+            ? text("Dutymode! (OP)", DARK_RED, BOLD)
+            : text("Dutymode!", DARK_RED, BOLD);
+        event.bossbar(PlayerHudPriority.HIGHEST, message, BossBar.Color.RED, BossBar.Overlay.PROGRESS, 1.0f);
+        event.sidebar(PlayerHudPriority.HIGHEST, List.of(message));
+        event.footer(PlayerHudPriority.HIGHEST, List.of(message));
     }
 
     /**
@@ -263,28 +297,94 @@ public final class InventoryStore implements Listener {
             UUID uuid = event.getPayload(UUID.class);
             Player player = Bukkit.getPlayer(uuid);
             if (player == null) return;
-            loadFromDatabase(player, Runner.ASYNC, r -> {
-                    if (r != 0) plugin.getLogger().info("[Store] Update received: " + player.getName());
-                });
+            StoreSession session = sessions.get(uuid);
+            if (session == null) return;
+            plugin.getLogger().info("[Store] Update received: " + player.getName());
+            loadFromDatabase(session);
         }
     }
 
-    public void switchTrack(Player player, int newTrack) {
-        final UUID uuid = player.getUniqueId();
-        final String name = player.getName();
-        SQLTrack oldTrackRow = tracks.remove(uuid);
-        int oldTrack = oldTrackRow != null
-            ? oldTrackRow.getTrack()
-            : 0;
-        storeToDatabase(player, Runner.SYNC, oldTrackRow, true, null);
-        final SQLTrack newTrackRow;
-        if (newTrack == 0) {
-            if (oldTrackRow != null) plugin.database.delete(oldTrackRow);
-            newTrackRow = null;
+    protected void duty(RemotePlayer player, Boolean dutymode) {
+        if (player.isPlayer()) {
+            dutyPlayer(player.getPlayer(), dutymode);
         } else {
-            newTrackRow = new SQLTrack(player, newTrack);
-            plugin.database.save(newTrackRow);
+            if (dutymode == Boolean.TRUE) throw new CommandWarn("Cannot enter dutymode remotely!");
+            dutyRemote(player);
         }
-        loadFromDatabase(uuid, name, Runner.SYNC, newTrackRow, null);
+    }
+
+    private void dutyPlayer(Player player, Boolean dutymode) {
+        StoreSession session = sessions.get(player.getUniqueId());
+        if (session == null || session.loading) {
+            throw new CommandWarn("Session not ready! Please try again later");
+        }
+        if (dutymode == null) dutymode = !session.isInDutymode();
+        if (dutymode == session.isInDutymode()) {
+            if (session.isInDutymode()) {
+                throw new CommandWarn("You are already in dutymode");
+            } else {
+                throw new CommandWarn("You are not in dutymode");
+            }
+        }
+        if (dutymode) {
+            switchTrack(player, session, true);
+            player.sendMessage(text("Dutymode enabled", DARK_RED, BOLD));
+            return;
+        }
+        // dutymode == false
+        if (session.trackRow.isOnThisServer()) {
+            Location location = session.trackRow.getLocation();
+            if (location != null) player.teleport(location, TeleportCause.COMMAND);
+            switchTrack(player, session, false);
+            player.sendMessage(text("Dutymode disabled", YELLOW, BOLD));
+            return;
+        }
+        if (Connect.get().serverIsOnline(session.trackRow.getServer())) {
+            Connect.get().dispatchRemoteCommand(player, "duty off", session.trackRow.getServer());
+            return;
+        }
+        String originServer = session.trackRow.getServer();
+        switchTrack(player, session, false);
+        player.sendMessage(text("Dutymode disabled. Origin server down: " + originServer, YELLOW, BOLD));
+    }
+
+    private void dutyRemote(RemotePlayer player) {
+        SQLTrack track = plugin.database.find(SQLTrack.class).eq("player", player.getUniqueId()).findUnique();
+        if (track == null) throw new CommandWarn("Not in dutymode!");
+        Location location = track.getLocation();
+        if (location == null) location = Bukkit.getWorlds().get(0).getSpawnLocation();
+        player.bring(plugin, location, entity -> {
+                plugin.database.delete(track);
+                entity.sendMessage(text("Dutymode disabled", YELLOW, BOLD));
+            });
+    }
+
+    private void switchTrack(Player player, StoreSession session, boolean dutymode) {
+        storeToDatabase(player, session, Runner.SYNC, true, null);
+        if (dutymode) {
+            session.trackRow = new SQLTrack(player, 1);
+            plugin.database.insert(session.trackRow);
+        } else {
+            plugin.database.delete(session.trackRow);
+            session.trackRow = null;
+        }
+        loadFromDatabaseWithTrack(session, Runner.SYNC, r -> { });
+        if (dutymode) player.setGameMode(GameMode.CREATIVE);
+        if (dutymode && player.hasPermission("inventory.duty.op")) {
+            player.setOp(true);
+        } else {
+            player.setOp(false);
+        }
+        plugin.getLogger().info("[Store] Switch " + session.name + " " + dutymode);
+    }
+
+    public boolean isInDutymode(Player player) {
+        StoreSession session = sessions.get(player.getUniqueId());
+        return session != null && session.isInDutymode();
+    }
+
+    public boolean isLoaded(Player player) {
+        StoreSession session = sessions.get(player.getUniqueId());
+        return session != null && session.loaded;
     }
 }

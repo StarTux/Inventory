@@ -56,6 +56,9 @@ public final class InventoryPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (inventoryStore != null) {
+            inventoryStore.disable();
+        }
         Gui.disable(this);
         database.waitForAsyncTask();
         database.close();
