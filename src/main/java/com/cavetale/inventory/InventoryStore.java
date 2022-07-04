@@ -7,6 +7,7 @@ import com.cavetale.core.connect.ServerGroup;
 import com.cavetale.core.event.connect.ConnectMessageEvent;
 import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.hud.PlayerHudPriority;
+import com.cavetale.core.perm.Perm;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLInventory;
@@ -52,6 +53,7 @@ import static net.kyori.adventure.text.format.TextDecoration.*;
 @RequiredArgsConstructor
 public final class InventoryStore implements Listener {
     private static final String MESSAGE_STORED = "inventory:stored";
+    private static final String GROUP = "dutymode";
     private final InventoryPlugin plugin;
     private final Map<UUID, StoreSession> sessions = new HashMap<>();
     private boolean disabled;
@@ -355,6 +357,7 @@ public final class InventoryStore implements Listener {
         if (location == null) location = Bukkit.getWorlds().get(0).getSpawnLocation();
         player.bring(plugin, location, entity -> {
                 plugin.database.delete(track);
+                Perm.get().removeGroup(player.getUniqueId(), GROUP);
                 entity.sendMessage(text("Dutymode disabled", YELLOW, BOLD));
             });
     }
@@ -369,7 +372,13 @@ public final class InventoryStore implements Listener {
             session.trackRow = null;
         }
         loadFromDatabaseWithTrack(session, Runner.SYNC, r -> { });
-        if (dutymode) player.setGameMode(GameMode.CREATIVE);
+        if (dutymode) {
+            player.setGameMode(GameMode.CREATIVE);
+            player.setFlying(true);
+            Perm.get().addGroup(player.getUniqueId(), GROUP);
+        } else {
+            Perm.get().removeGroup(player.getUniqueId(), GROUP);
+        }
         if (dutymode && player.hasPermission("inventory.duty.op")) {
             player.setOp(true);
         } else {
