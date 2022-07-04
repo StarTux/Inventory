@@ -10,6 +10,7 @@ import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.sql.SQLStash;
+import com.cavetale.inventory.sql.SQLTrack;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
 import com.cavetale.inventory.util.Items;
@@ -99,6 +100,10 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         storeNode.addChild("openender").arguments("<id>")
             .description("Open ender store")
             .playerCaller(this::storeOpenEnder);
+        //
+        rootNode.addChild("duties").denyTabCompletion()
+            .description("List players in dutymode")
+            .senderCaller(this::duties);
     }
 
     protected boolean stashTransfer(CommandSender sender, String[] args) {
@@ -384,5 +389,25 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                     player.sendMessage(text("Opening...", YELLOW));
                     player.openInventory(inventory);
                 });
+    }
+
+    private void duties(CommandSender sender) {
+        plugin.database.find(SQLTrack.class).findListAsync(list -> CommandNode.wrap(sender, () -> {
+                    if (list.isEmpty()) {
+                        throw new CommandWarn("Nobody is in dutymode");
+                    }
+                    sender.sendMessage(text(list.size() + " player(s) in dutymode", GRAY));
+                    for (SQLTrack row : list) {
+                        sender.sendMessage(join(noSeparators(),
+                                                text(PlayerCache.nameForUuid(row.getPlayer()), AQUA),
+                                                text(" " + row.getTrack(), YELLOW),
+                                                text(" " + row.getServer(), AQUA),
+                                                text(" " + row.getWorld()
+                                                     + " " + (int) Math.floor(row.getX())
+                                                     + " " + (int) Math.floor(row.getY())
+                                                     + " " + (int) Math.floor(row.getZ()), GRAY),
+                                                text(" " + DATE_FORMAT.format(row.getUpdated()), GRAY, ITALIC)));
+                    }
+                }));
     }
 }
