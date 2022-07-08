@@ -74,8 +74,8 @@ public final class Backups implements Listener {
             }
             create(player, SQLBackup.Type.INVENTORY, "Scheduled", result1 -> {
                     create(player, SQLBackup.Type.ENDER_CHEST, "Scheduled", result2 -> {
-                            plugin.getLogger().info("[Backups] Finished " + player.getName()
-                                                    + ": " + result1 + ", " + result2);
+                            plugin.getLogger().finest("[Backups] Finished " + player.getName()
+                                                      + ": " + result1 + ", " + result2);
                         });
                 });
             // Wait for next loop after one player!
