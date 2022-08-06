@@ -15,6 +15,9 @@ import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
 import com.cavetale.inventory.util.Items;
 import com.winthier.playercache.PlayerCache;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.List;
@@ -104,6 +107,9 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         rootNode.addChild("duties").denyTabCompletion()
             .description("List players in dutymode")
             .senderCaller(this::duties);
+        rootNode.addChild("fromfile").arguments("<path>")
+            .description("Load items from file")
+            .playerCaller(this::fromFile);
     }
 
     protected boolean stashTransfer(CommandSender sender, String[] args) {
@@ -409,5 +415,26 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                                                 text(" " + DATE_FORMAT.format(row.getUpdated()), GRAY, ITALIC)));
                     }
                 }));
+    }
+
+    private boolean fromFile(Player player, String[] args) {
+        if (args.length != 1) return false;
+        File file = new File(args[0]);
+        if (!file.exists()) throw new IllegalArgumentException("File not found: " + file);
+        int count = 0;
+        try (BufferedReader in = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = in.readLine()) != null) {
+                ItemStorage itemStorage = Json.deserialize(line, ItemStorage.class);
+                if (itemStorage == null) throw new CommandWarn("Bad line: " + line);
+                player.getInventory().addItem(itemStorage.toItemStack());
+                count += 1;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CommandWarn(e.getMessage());
+        }
+        player.sendMessage(text(count + " items restored from " + file, YELLOW));
+        return true;
     }
 }
