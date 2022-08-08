@@ -27,6 +27,6 @@ final class StoreSession {
         return name
             + (loading ? " (loading)" : "")
             + (scheduled ? " (scheduled)" : "")
-            + "track=" + getTrack();
+            + " track=" + getTrack();
     }
 }
