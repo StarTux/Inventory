@@ -348,12 +348,16 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                         String openCmd = "/inventory store open " + row.getId();
                         sender.sendMessage(join(noSeparators(),
                                                 text("#" + row.getId(), YELLOW),
-                                                text(" track:", GRAY),
+                                                text(" tr:", GRAY),
                                                 text(row.getTrack(), WHITE),
-                                                text(" items:", GRAY),
+                                                text(" i:", GRAY),
                                                 text(row.getItemCount(), WHITE),
-                                                text(" created:", GRAY),
-                                                text(DATE_FORMAT.format(row.getCreated()), WHITE))
+                                                text(" cr:", GRAY),
+                                                text(DATE_FORMAT.format(row.getCreated()), WHITE),
+                                                text(" cl:", GRAY),
+                                                (row.isClaimed()
+                                                 ? text(DATE_FORMAT.format(row.getCreated()), WHITE)
+                                                 : text("NO", DARK_RED)))
                                            .clickEvent(ClickEvent.suggestCommand(openCmd))
                                            .hoverEvent(HoverEvent.showText(text(openCmd, YELLOW))));
                     }

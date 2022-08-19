@@ -68,4 +68,8 @@ public final class SQLInventory implements SQLRow {
         this.created = new Date();
         this.claimed = null;
     }
+
+    public boolean isClaimed() {
+        return claimed != null;
+    }
 }
