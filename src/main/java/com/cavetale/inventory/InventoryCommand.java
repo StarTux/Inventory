@@ -4,6 +4,7 @@ import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.event.item.PlayerReceiveItemsEvent;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.mail.SQLItemMail;
@@ -19,7 +20,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -103,6 +106,9 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         storeNode.addChild("openender").arguments("<id>")
             .description("Open ender store")
             .playerCaller(this::storeOpenEnder);
+        storeNode.addChild("deliver").arguments("<id>")
+            .description("(Re)deliver an inventory")
+            .playerCaller(this::storeDeliver);
         //
         rootNode.addChild("duties").denyTabCompletion()
             .description("List players in dutymode")
@@ -346,8 +352,11 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                     sender.sendMessage(text("Found: " + list.size(), YELLOW));
                     for (SQLInventory row : list) {
                         String openCmd = "/inventory store open " + row.getId();
+                        String deliverCmd = "/inventory store deliver " + row.getId();
                         sender.sendMessage(join(noSeparators(),
-                                                text("#" + row.getId(), YELLOW),
+                                                (text("#" + row.getId(), YELLOW)
+                                                 .clickEvent(ClickEvent.suggestCommand(deliverCmd))
+                                                 .hoverEvent(HoverEvent.showText(text(deliverCmd, YELLOW)))),
                                                 text(" tr:", GRAY),
                                                 text(row.getTrack(), WHITE),
                                                 text(" i:", GRAY),
@@ -399,6 +408,35 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                     player.sendMessage(text("Opening...", YELLOW));
                     player.openInventory(inventory);
                 });
+    }
+
+    protected boolean storeDeliver(CommandSender sender, String[] args) {
+        if (args.length != 1) return false;
+        String idString = args[0];
+        final int id = CommandArgCompleter.requireInt(args[0], i -> i > 0);
+        plugin.database.find(SQLInventory.class)
+            .idEq(id)
+            .findUniqueAsync(row -> {
+                    if (row == null) {
+                        sender.sendMessage(text("Inventory not found: #" + id, RED));
+                        return;
+                    }
+                    Player target = Bukkit.getPlayer(row.getOwner());
+                    if (target == null) {
+                        sender.sendMessage(text("Player not online: " + PlayerCache.nameForUuid(row.getOwner()), RED));
+                        return;
+                    }
+                    final SQLInventory.Tag tag = Json.deserialize(row.getJson(), SQLInventory.Tag.class);
+                    List<ItemStack> drops = new ArrayList<>();
+                    tag.restore(target, drops);
+                    PlayerReceiveItemsEvent.receiveItems(target, drops);
+                    if (!row.isClaimed()) {
+                        row.setClaimed(new Date());
+                        plugin.database.update(row, "claimed");
+                    }
+                    sender.sendMessage(text("Delivered inventory #" + row.getId() + " to " + target.getName(), YELLOW));
+                });
+        return true;
     }
 
     private void duties(CommandSender sender) {

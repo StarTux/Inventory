@@ -216,22 +216,14 @@ public final class InventoryStore implements Listener {
         // Restore
         for (SQLInventory row : list) {
             final SQLInventory.Tag tag;
-            List<ItemStack> drops = new ArrayList<>();
             try {
                 tag = Json.deserialize(row.getJson(), SQLInventory.Tag.class);
             } catch (Exception e) {
                 plugin.getLogger().log(Level.SEVERE, "[Store] deserialize failed: " + row, e);
                 continue;
             }
-            if (tag.getInventory() != null) {
-                drops.addAll(tag.getInventory().restore(player.getInventory(), "InventoryStore:inventory:" + player.getName()));
-            }
-            if (tag.getEnderChest() != null) {
-                drops.addAll(tag.getEnderChest().restore(player.getEnderChest(), "InventoryStore:enderChest:" + player.getName()));
-            }
-            if (tag.getCursor() != null) {
-                drops.add(tag.getCursor().toItemStack());
-            }
+            List<ItemStack> drops = new ArrayList<>();
+            tag.restore(player, drops);
             drops.removeIf(Objects::isNull);
             if (!drops.isEmpty()) {
                 List<ItemStorage> drops2 = new ArrayList<>();
@@ -241,9 +233,6 @@ public final class InventoryStore implements Listener {
                 SQLItemMail mail = new SQLItemMail(SQLItemMail.SERVER_UUID, session.uuid, drops2,
                                                    text("You dropped this earlier"));
                 plugin.database.insertAsync(mail, null);
-            }
-            if (tag.getStatus() != null) {
-                tag.getStatus().restore(player);
             }
             if (row.getGameMode() != null) player.setGameMode(row.getGameMode());
             plugin.getLogger().info("[Store] Restored " + player.getName()

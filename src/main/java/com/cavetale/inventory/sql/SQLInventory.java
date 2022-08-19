@@ -8,9 +8,12 @@ import com.winthier.sql.SQLRow.Name;
 import com.winthier.sql.SQLRow.NotNull;
 import com.winthier.sql.SQLRow;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 import lombok.Data;
 import org.bukkit.GameMode;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 /**
  * Stores entire player inventories in the database.  Contents
@@ -55,6 +58,24 @@ public final class SQLInventory implements SQLRow {
             return (inventory != null ? inventory.getCount() : 0)
                 + (enderChest != null ? enderChest.getCount() : 0)
                 + (cursor != null ? cursor.getAmount() : 0);
+        }
+
+        /**
+         * Give all items to player and put drops in list.
+         */
+        public void restore(Player player, List<ItemStack> drops) {
+            if (inventory != null) {
+                drops.addAll(inventory.restore(player.getInventory(), "InventoryStore:inventory:" + player.getName()));
+            }
+            if (enderChest != null) {
+                drops.addAll(enderChest.restore(player.getEnderChest(), "InventoryStore:enderChest:" + player.getName()));
+            }
+            if (cursor != null) {
+                drops.add(cursor.toItemStack());
+            }
+            if (status != null) {
+                status.restore(player);
+            }
         }
     }
 
