@@ -68,7 +68,7 @@ public final class InventoryPlugin extends JavaPlugin {
         return instance.database;
     }
 
-    protected static InventoryPlugin instance() {
+    public static InventoryPlugin plugin() {
         return instance;
     }
 }

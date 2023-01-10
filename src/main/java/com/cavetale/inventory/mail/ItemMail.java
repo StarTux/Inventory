@@ -3,18 +3,19 @@ package com.cavetale.inventory.mail;
 import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.connect.ServerCategory;
+import com.cavetale.core.event.hud.PlayerHudEvent;
+import com.cavetale.core.event.hud.PlayerHudPriority;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.InventoryPlugin;
 import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.storage.ItemStorage;
 import com.cavetale.inventory.util.Items;
-import com.cavetale.sidebar.PlayerSidebarEvent;
-import com.cavetale.sidebar.Priority;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -23,9 +24,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import static net.kyori.adventure.text.Component.join;
+import static com.cavetale.inventory.InventoryPlugin.plugin;
 import static net.kyori.adventure.text.Component.text;
-import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
+import static net.kyori.adventure.text.Component.textOfChildren;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 /**
@@ -116,14 +117,15 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
         }
     }
 
+    private static final Component NTFY = textOfChildren(text("You have ", AQUA), text("/imail", YELLOW));
+    private static final List<Component> NLST = List.of(NTFY);
+
     @EventHandler
-    private void onPlayerSidebar(PlayerSidebarEvent event) {
+    private void onPlayerHud(PlayerHudEvent event) {
         if (!userMailCache.contains(event.getPlayer().getUniqueId())) return;
         if (!event.getPlayer().hasPermission(MAIL_PERMISSION)) return;
-        event.add(plugin, Priority.HIGH,
-                  join(noSeparators(),
-                       text("You have ", AQUA),
-                       text("/imail", YELLOW)));
+        event.sidebar(PlayerHudPriority.HIGH, NLST);
+        event.bossbar(PlayerHudPriority.HIGH, NTFY, BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS, 1.0f);
     }
 
     public static void send(UUID target, Inventory inventory, Component message) {
@@ -134,6 +136,10 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
         }
         if (items.isEmpty()) return;
         SQLItemMail row = new SQLItemMail(SQLItemMail.SERVER_UUID, target, items, message);
-        InventoryPlugin.getInstance().getDatabase().insertAsync(row, null);
+        plugin().getDatabase().insertAsync(row, null);
+    }
+
+    public static void refreshUserCache() {
+        plugin().getItemMail().check();
     }
 }

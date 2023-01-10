@@ -41,7 +41,10 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.inventory.ItemStack;
+import static com.cavetale.inventory.mail.ItemMail.refreshUserCache;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.event.ClickEvent.runCommand;
+import static net.kyori.adventure.text.event.HoverEvent.showText;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.*;
 
@@ -232,7 +235,12 @@ public final class InventoryStore implements Listener {
                 }
                 SQLItemMail mail = new SQLItemMail(SQLItemMail.SERVER_UUID, session.uuid, drops2,
                                                    text("You dropped this earlier"));
-                plugin.database.insertAsync(mail, null);
+                plugin.database.insertAsync(mail, i -> {
+                        player.sendMessage(text("You dropped something. Click here to pick it up.", YELLOW)
+                                           .hoverEvent(showText(text("/imail", YELLOW)))
+                                           .clickEvent(runCommand("/imail")));
+                        refreshUserCache();
+                    });
             }
             if (row.getGameMode() != null) player.setGameMode(row.getGameMode());
             plugin.getLogger().info("[Store] Restored " + player.getName()

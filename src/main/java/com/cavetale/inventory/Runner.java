@@ -2,7 +2,7 @@ package com.cavetale.inventory;
 
 import org.bukkit.Bukkit;
 import static com.cavetale.inventory.InventoryPlugin.database;
-import static com.cavetale.inventory.InventoryPlugin.instance;
+import static com.cavetale.inventory.InventoryPlugin.plugin;
 
 /**
  * Provides modes of operation for worker threads.
@@ -29,7 +29,7 @@ public interface Runner {
                 database().scheduleAsyncTask(task);
             }
             @Override public void main(Runnable task) {
-                Bukkit.getScheduler().runTask(instance(), task);
+                Bukkit.getScheduler().runTask(plugin(), task);
             }
         };
     Runner SYNC = new Runner() {
