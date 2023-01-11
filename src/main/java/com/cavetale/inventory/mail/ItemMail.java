@@ -139,6 +139,17 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
         plugin().getDatabase().insertAsync(row, null);
     }
 
+    public static void send(UUID target, List<ItemStack> list, Component message) {
+        List<ItemStorage> items = new ArrayList<>();
+        for (ItemStack item : list) {
+            if (item == null || item.getType().isAir()) continue;
+            items.add(ItemStorage.of(item));
+        }
+        if (items.isEmpty()) return;
+        SQLItemMail row = new SQLItemMail(SQLItemMail.SERVER_UUID, target, items, message);
+        plugin().getDatabase().insertAsync(row, null);
+    }
+
     public static void refreshUserCache() {
         plugin().getItemMail().check();
     }
