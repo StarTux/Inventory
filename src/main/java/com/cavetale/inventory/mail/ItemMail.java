@@ -43,6 +43,7 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
 
     @Override
     protected void onEnable() {
+        rootNode.playerCaller(this::pickup);
         rootNode.addChild("pickup").denyTabCompletion()
             .description("Open your mail")
             .playerCaller(this::pickup);
