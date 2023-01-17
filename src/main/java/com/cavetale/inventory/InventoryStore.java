@@ -198,8 +198,8 @@ public final class InventoryStore implements Listener {
     /** Always called in main thread. */
     private void loadFromDatabaseCallback(StoreSession session, List<SQLInventory> list, Consumer<Integer> callback) {
         if (disabled || session.disabled) {
-            plugin.getLogger().warning("[Store] Disabled: " + session.name + ": " + list);
             for (SQLInventory row : list) {
+                plugin.getLogger().warning("[Store] Disabled: " + session.name + " id=" + row.getId() + " claimed=" + row.getClaimed());
                 row.setClaimed(null);
                 plugin.database.update(row, "claimed");
             }
