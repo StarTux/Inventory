@@ -7,6 +7,7 @@ import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.event.item.PlayerReceiveItemsEvent;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.gui.Gui;
+import com.cavetale.inventory.mail.ItemMail;
 import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLInventory;
@@ -109,6 +110,13 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         storeNode.addChild("deliver").arguments("<id>")
             .description("(Re)deliver an inventory")
             .playerCaller(this::storeDeliver);
+        // Mail
+        CommandNode mailNode = rootNode.addChild("mail")
+            .description("Item mail commands");
+        mailNode.addChild("send").arguments("<player> <message>")
+            .description("Send item mail to player")
+            .completers(CommandArgCompleter.PLAYER_CACHE)
+            .playerCaller(this::mailSend);
         //
         rootNode.addChild("duties").denyTabCompletion()
             .description("List players in dutymode")
@@ -436,6 +444,25 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                     }
                     sender.sendMessage(text("Delivered inventory #" + row.getId() + " to " + target.getName(), YELLOW));
                 });
+        return true;
+    }
+
+    private boolean mailSend(Player player, String[] args) {
+        if (args.length < 2) return false;
+        PlayerCache target = PlayerCache.require(args[0]);
+        Component message = text(String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
+        Gui gui = new Gui(plugin, Gui.Type.STASH)
+            .title(text("Item Mail to " + target.name))
+            .size(6 * 9);
+        gui.setEditable(true);
+        gui.onClose(evt -> {
+                if (ItemMail.send(target.uuid, gui.getInventory(), message)) {
+                    player.sendMessage(text("Item mail sent to " + target.name, YELLOW));
+                } else {
+                    player.sendMessage(text("Inventory empty, nothing was sent", RED));
+                }
+            });
+        gui.open(player);
         return true;
     }
 

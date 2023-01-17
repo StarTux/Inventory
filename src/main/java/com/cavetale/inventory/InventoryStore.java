@@ -9,7 +9,7 @@ import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.hud.PlayerHudPriority;
 import com.cavetale.core.perm.Perm;
 import com.cavetale.core.util.Json;
-import com.cavetale.inventory.mail.SQLItemMail;
+import com.cavetale.inventory.mail.ItemMail;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.sql.SQLTrack;
 import com.cavetale.inventory.storage.InventoryStorage;
@@ -41,10 +41,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.inventory.ItemStack;
-import static com.cavetale.inventory.mail.ItemMail.refreshUserCache;
 import static net.kyori.adventure.text.Component.text;
-import static net.kyori.adventure.text.event.ClickEvent.runCommand;
-import static net.kyori.adventure.text.event.HoverEvent.showText;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.*;
 
@@ -229,18 +226,7 @@ public final class InventoryStore implements Listener {
             tag.restore(player, drops);
             drops.removeIf(Objects::isNull);
             if (!drops.isEmpty()) {
-                List<ItemStorage> drops2 = new ArrayList<>();
-                for (ItemStack it : drops) {
-                    drops2.add(ItemStorage.of(it));
-                }
-                SQLItemMail mail = new SQLItemMail(SQLItemMail.SERVER_UUID, session.uuid, drops2,
-                                                   text("You dropped this earlier"));
-                plugin.database.insertAsync(mail, i -> {
-                        player.sendMessage(text("You dropped something. Click here to pick it up.", YELLOW)
-                                           .hoverEvent(showText(text("/imail", YELLOW)))
-                                           .clickEvent(runCommand("/imail")));
-                        refreshUserCache();
-                    });
+                ItemMail.send(session.uuid, drops, text("You dropped this earlier"));
             }
             if (row.getGameMode() != null) player.setGameMode(row.getGameMode());
             plugin.getLogger().info("[Store] Restored " + player.getName()
