@@ -118,7 +118,8 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
         }
         Gui gui = new Gui(plugin, Gui.Type.MAIL)
             .size(SIZE)
-            .title(GuiOverlay.BLANK.builder(SIZE, GRAY)
+            .title(GuiOverlay.HOLES.builder(SIZE, BLUE)
+                   .layer(GuiOverlay.TITLE_BAR, GOLD)
                    .title(row.getMessageComponent())
                    .build());
         gui.setEditable(true);
