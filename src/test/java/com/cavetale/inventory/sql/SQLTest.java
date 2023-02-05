@@ -1,5 +1,6 @@
 package com.cavetale.inventory.sql;
 
+import com.cavetale.inventory.mail.SQLItemMail;
 import com.winthier.sql.SQLDatabase;
 import org.junit.Test;
 
@@ -10,5 +11,6 @@ public final class SQLTest {
         System.out.println(SQLDatabase.testTableCreation(SQLStash.class));
         System.out.println(SQLDatabase.testTableCreation(SQLInventory.class));
         System.out.println(SQLDatabase.testTableCreation(SQLTrack.class));
+        System.out.println(SQLDatabase.testTableCreation(SQLItemMail.class));
     }
 }
