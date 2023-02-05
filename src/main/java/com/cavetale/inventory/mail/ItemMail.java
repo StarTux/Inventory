@@ -4,7 +4,6 @@ import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.connect.Connect;
-import com.cavetale.core.connect.NetworkServer;
 import com.cavetale.core.connect.ServerCategory;
 import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.hud.PlayerHudPriority;
@@ -55,7 +54,7 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
         rootNode.addChild("pickup").denyTabCompletion()
             .description("Open your mail")
             .playerCaller(this::pickup);
-        if (NetworkServer.current().isSurvival()) {
+        if (ServerCategory.current().isSurvival()) {
             Bukkit.getScheduler().runTaskTimer(plugin, this::check, 0L, 200L);
             Bukkit.getPluginManager().registerEvents(this, plugin);
         }
@@ -156,7 +155,7 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
 
     @EventHandler
     private void onPlayerHud(PlayerHudEvent event) {
-        if (!NetworkServer.current().isSurvival()) return;
+        if (!ServerCategory.current().isSurvival()) return;
         if (!userMailCache.contains(event.getPlayer().getUniqueId())) return;
         if (!event.getPlayer().hasPermission(MAIL_PERMISSION)) return;
         event.sidebar(PlayerHudPriority.HIGH, NLST);
