@@ -112,7 +112,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
             .playerCaller(this::storeDeliver);
         storeNode.addChild("unclaim").arguments("<id>")
             .description("Mark a claimed inventory as unclaimed")
-            .playerCaller(this::storeUnclaim);
+            .senderCaller(this::storeUnclaim);
         // Mail
         CommandNode mailNode = rootNode.addChild("mail")
             .description("Item mail commands");
