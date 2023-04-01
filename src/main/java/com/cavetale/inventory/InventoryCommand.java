@@ -110,6 +110,9 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         storeNode.addChild("deliver").arguments("<id>")
             .description("(Re)deliver an inventory")
             .playerCaller(this::storeDeliver);
+        storeNode.addChild("unclaim").arguments("<id>")
+            .description("Mark a claimed inventory as unclaimed")
+            .senderCaller(this::storeUnclaim);
         // Mail
         CommandNode mailNode = rootNode.addChild("mail")
             .description("Item mail commands");
@@ -446,6 +449,23 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                         plugin.database.update(row, "claimed");
                     }
                     sender.sendMessage(text("Delivered inventory #" + row.getId() + " to " + target.getName(), YELLOW));
+                });
+        return true;
+    }
+
+    protected boolean storeUnclaim(CommandSender sender, String[] args) {
+        if (args.length != 1) return false;
+        String idString = args[0];
+        final int id = CommandArgCompleter.requireInt(args[0], i -> i > 0);
+        plugin.database.update(SQLInventory.class)
+            .where(q -> q.eq("id", id))
+            .set("claimed", null)
+            .async(i -> {
+                    if (i == 0) {
+                        sender.sendMessage(text("Not claimed: #" + id, RED));
+                        return;
+                    }
+                    sender.sendMessage(text("Set as unclaimed: #" + id, YELLOW));
                 });
         return true;
     }
