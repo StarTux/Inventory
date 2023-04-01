@@ -121,9 +121,12 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         rootNode.addChild("duties").denyTabCompletion()
             .description("List players in dutymode")
             .senderCaller(this::duties);
-        rootNode.addChild("fromfile").arguments("<path>")
-            .description("Load items from file")
-            .playerCaller(this::fromFile);
+        rootNode.addChild("itemsfromfile").arguments("<path>")
+            .description("Load items from file, one item per line")
+            .playerCaller(this::itemsFromFile);
+        rootNode.addChild("inventoryfromfile").arguments("<path>")
+            .description("Load whole inventory from file")
+            .playerCaller(this::inventoryFromFile);
     }
 
     protected boolean stashTransfer(CommandSender sender, String[] args) {
@@ -486,7 +489,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                 }));
     }
 
-    private boolean fromFile(Player player, String[] args) {
+    private boolean itemsFromFile(Player player, String[] args) {
         if (args.length != 1) return false;
         File file = new File(args[0]);
         if (!file.exists()) throw new IllegalArgumentException("File not found: " + file);
@@ -504,6 +507,17 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
             throw new CommandWarn(e.getMessage());
         }
         player.sendMessage(text(count + " items restored from " + file, YELLOW));
+        return true;
+    }
+
+    private boolean inventoryFromFile(Player player, String[] args) {
+        if (args.length != 1) return false;
+        File file = new File(args[0]);
+        if (!file.exists()) throw new IllegalArgumentException("File not found: " + file);
+        InventoryStorage storage = Json.load(file, InventoryStorage.class, null);
+        if (storage == null) throw new CommandWarn("Not an inventory storage: " + file);
+        player.openInventory(storage.toInventory());
+        player.sendMessage(text("Openinv inventory from " + file, YELLOW));
         return true;
     }
 }
