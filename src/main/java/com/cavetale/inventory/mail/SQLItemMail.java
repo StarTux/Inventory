@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import static com.cavetale.inventory.InventoryPlugin.plugin;
+import static java.util.logging.Level.SEVERE;
 import static net.kyori.adventure.text.Component.empty;
 
 @Name("mails")
@@ -43,9 +45,7 @@ public final class SQLItemMail implements SQLRow {
             this.itemCount += it.getAmount();
         }
         this.json = Json.serialize(new Tag(items));
-        this.message = (message != null && !empty().equals(message))
-            ? GsonComponentSerializer.gson().serialize(message)
-            : null;
+        this.message = GsonComponentSerializer.gson().serialize(message);
         this.created = new Date();
     }
 
@@ -55,8 +55,13 @@ public final class SQLItemMail implements SQLRow {
     }
 
     public Component getMessageComponent() {
-        return message != null
-            ? GsonComponentSerializer.gson().deserialize(message)
-            : empty();
+        try {
+            return message != null
+                ? GsonComponentSerializer.gson().deserialize(message)
+                : empty();
+        } catch (Exception e) {
+            plugin().getLogger().log(SEVERE, "SQLItemMail.id=" + id, e);
+            return empty();
+        }
     }
 }

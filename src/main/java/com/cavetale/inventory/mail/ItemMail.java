@@ -14,6 +14,7 @@ import com.cavetale.inventory.InventoryPlugin;
 import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.storage.ItemStorage;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -69,6 +70,14 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
                 return Integer.compare(ax * ax + ay * ay,
                                        bx * bx + by * by);
             });
+        // Prune logs
+        final Date then = new Date(System.currentTimeMillis() - 1000L * 60L * 60L * 24L * 7L);
+        plugin.getDatabase().find(SQLItemMailLog.class)
+            .lt("delivered", then)
+            .deleteAsync(i -> {
+                    if (i == 0) return;
+                    plugin.getLogger().info("[ItemMail] Deleted " + i + " logs older than " + then);
+                });
     }
 
     private void check() {
@@ -88,64 +97,69 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
                 List<SQLItemMail> rows = plugin.getDatabase().find(SQLItemMail.class)
                     .eq("owner", uuid)
                     .orderByAscending("created")
-                    .limit(1)
                     .findList();
-                SQLItemMail row = !rows.isEmpty() ? rows.get(0) : null;
-                if (row == null) {
+                if (rows.isEmpty()) {
                     Bukkit.getScheduler().runTask(plugin, () -> {
                             player.sendMessage(text("You don't have any item mail", RED));
                         });
                     return;
                 }
-                plugin.getDatabase().delete(row);
-                Bukkit.getScheduler().runTask(plugin, () -> pickupCallback(player, row));
+                Bukkit.getScheduler().runTask(plugin, () -> pickupCallback(player, rows));
             });
     }
 
-    private void pickupCallback(Player player, SQLItemMail row) {
+    private void pickupCallback(Player player, List<SQLItemMail> rows) {
         if (!player.isOnline()) {
             plugin.getLogger().warning("[ItemMail] Player went offline: " + player.getName());
-            row.setId(null);
-            plugin.getDatabase().insertAsync(row, null);
             return;
         }
-        List<ItemStorage> itemList = row.getItemList();
-        List<ItemStack> itemStackList = new ArrayList<>(itemList.size());
-        for (ItemStorage it : itemList) {
-            try {
-                itemStackList.add(it.toItemStack());
-            } catch (IllegalStateException ise) {
-                plugin.getLogger().log(Level.SEVERE, "[ItemMail] pickupCallback: " + Json.serialize(it), ise);
+        List<SQLItemMailLog> logs = new ArrayList<>();
+        List<Integer> ids = new ArrayList<>();
+        for (SQLItemMail row : rows) {
+            logs.add(new SQLItemMailLog(row));
+            ids.add(row.getId());
+        }
+        plugin.getLogger().info("[ItemMail] Player opening mails: " + ids);
+        plugin.getDatabase().insertAsync(logs, null);
+        plugin.getDatabase().deleteAsync(rows, i -> check());
+        List<ItemStack> itemStackList = new ArrayList<>();
+        List<ItemStack> dropList = new ArrayList<>();
+        for (SQLItemMail row : rows) {
+            for (ItemStorage it : row.getItemList()) {
+                try {
+                    itemStackList.add(it.toItemStack());
+                } catch (IllegalStateException ise) {
+                    plugin.getLogger().log(Level.SEVERE, "[ItemMail] id=" + row.getId() + " pickupCallback: " + Json.serialize(it), ise);
+                }
             }
         }
         Gui gui = new Gui(plugin, Gui.Type.MAIL)
             .size(SIZE)
             .title(GuiOverlay.HOLES.builder(SIZE, WHITE)
                    .layer(GuiOverlay.TITLE_BAR, GRAY)
-                   .title(row.getMessageComponent())
+                   .title(rows.size() == 1 ? rows.get(0).getMessageComponent() : text("Item Mail", WHITE))
                    .build());
         gui.setEditable(true);
         for (int i = 0; i < itemStackList.size(); i += 1) {
             ItemStack it = itemStackList.get(i);
-            if (slots.size() > i) {
-                int slot = slots.get(i);
-                gui.getInventory().setItem(slot, it);
-            } else {
-                gui.getInventory().addItem(it);
+            if (i >= slots.size()) {
+                for (ItemStack drop : gui.getInventory().addItem(it).values()) {
+                    dropList.add(drop);
+                }
+                continue;
             }
+            gui.getInventory().setItem(slots.get(i), it);
         }
         gui.onClose(cle -> {
-                PlayerReceiveItemsEvent event = new PlayerReceiveItemsEvent(player, gui.getInventory());
-                if (event.isEmpty()) return;
-                event.giveItems();
-                event.callEvent();
-                event.dropItems();
-                check();
+                PlayerReceiveItemsEvent.receiveInventory(player, gui.getInventory());
+                if (!dropList.isEmpty()) {
+                    PlayerReceiveItemsEvent.receiveItems(player, dropList);
+                }
                 player.playSound(player.getLocation(), Sound.BLOCK_CHEST_CLOSE, 1.0f, 1.0f);
             });
         gui.open(player);
         player.playSound(player.getLocation(), Sound.BLOCK_CHEST_OPEN, 1.0f, 1.0f);
-        if (row.getMessage() != null) {
+        for (SQLItemMail row : rows) {
             player.sendMessage(row.getMessageComponent());
         }
     }

@@ -308,7 +308,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
             // the item's data tag, such as inventory arrays being
             // null, versus being empty.
             player.sendMessage(text(json2, RED));
-            plugin.getLogger().info(org.bukkit.ChatColor.RED + json2);
+            plugin.getLogger().warning(json2);
         }
         return true;
     }

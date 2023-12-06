@@ -4,6 +4,7 @@ import com.cavetale.core.connect.ServerCategory;
 import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.mail.ItemMail;
 import com.cavetale.inventory.mail.SQLItemMail;
+import com.cavetale.inventory.mail.SQLItemMailLog;
 import com.cavetale.inventory.sql.SQLBackup;
 import com.cavetale.inventory.sql.SQLInventory;
 import com.cavetale.inventory.sql.SQLStash;
@@ -36,6 +37,7 @@ public final class InventoryPlugin extends JavaPlugin {
                                         SQLBackup.class,
                                         SQLInventory.class,
                                         SQLItemMail.class,
+                                        SQLItemMailLog.class,
                                         SQLTrack.class));
         if (!database.createAllTables()) {
             throw new IllegalStateException("Database creation failed!");
