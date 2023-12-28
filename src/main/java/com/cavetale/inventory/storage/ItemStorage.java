@@ -84,12 +84,7 @@ public final class ItemStorage {
         } else if (base64 != null) {
             result = Items.deserialize(base64);
         } else if (bukkit != null) {
-            Material material;
-            try {
-                material = Material.valueOf(bukkit.toUpperCase());
-            } catch (IllegalArgumentException iae) {
-                throw new IllegalStateException("Invalid bukkit material: " + this);
-            }
+            final Material material = parseBukkitMaterial();
             result = new ItemStack(material);
         } else {
             return null;
@@ -167,6 +162,15 @@ public final class ItemStorage {
         // End Optional Data
         result.setItemMeta(itemMeta);
         return result;
+    }
+
+    private Material parseBukkitMaterial() {
+        if ("grass".equals(bukkit)) return Material.SHORT_GRASS;
+        try {
+            return Material.valueOf(bukkit.toUpperCase());
+        } catch (IllegalArgumentException iae) {
+            throw new IllegalStateException("Invalid bukkit material: " + this);
+        }
     }
 
     public void store(@NonNull ItemStack itemStack) {
