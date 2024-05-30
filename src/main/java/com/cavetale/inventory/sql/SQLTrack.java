@@ -1,9 +1,9 @@
 package com.cavetale.inventory.sql;
 
 import com.cavetale.core.connect.NetworkServer;
+import com.winthier.sql.SQLRow;
 import com.winthier.sql.SQLRow.Name;
 import com.winthier.sql.SQLRow.NotNull;
-import com.winthier.sql.SQLRow;
 import java.util.Date;
 import java.util.UUID;
 import lombok.Data;

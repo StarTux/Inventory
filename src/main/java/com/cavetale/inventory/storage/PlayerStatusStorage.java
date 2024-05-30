@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
@@ -43,8 +44,8 @@ public final class PlayerStatusStorage {
         }
 
         public PotionEffect toPotionEffect() {
-            NamespacedKey namespacedKey = NamespacedKey.minecraft(type);
-            PotionEffectType potionEffectType = PotionEffectType.getByKey(namespacedKey);
+            final NamespacedKey namespacedKey = NamespacedKey.minecraft(type);
+            final PotionEffectType potionEffectType = Registry.EFFECT.get(namespacedKey);
             if (potionEffectType == null) return null;
             return new PotionEffect(potionEffectType, duration, amplifier, ambient, particles, icon);
         }

@@ -1,9 +1,9 @@
 package com.cavetale.inventory.mail;
 
 import com.cavetale.inventory.storage.ItemStorage;
+import com.winthier.sql.SQLRow;
 import com.winthier.sql.SQLRow.Key;
 import com.winthier.sql.SQLRow.Name;
-import com.winthier.sql.SQLRow;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;

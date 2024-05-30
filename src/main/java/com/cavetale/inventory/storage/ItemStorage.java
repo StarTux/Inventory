@@ -18,6 +18,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.block.Container;
@@ -112,7 +113,7 @@ public final class ItemStorage {
         }
         if (enchants != null) {
             for (String key : enchants.keySet()) {
-                Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(key));
+                Enchantment enchantment = Registry.ENCHANTMENT.get(NamespacedKey.minecraft(key));
                 if (enchantment == null) {
                     InventoryPlugin.getInstance().getLogger().warning("Unknown enchantment: " + key);
                     continue;
