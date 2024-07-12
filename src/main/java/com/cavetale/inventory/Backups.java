@@ -1,6 +1,7 @@
 package com.cavetale.inventory;
 
 import com.cavetale.inventory.sql.SQLBackup;
+import com.cavetale.inventory.sql.SQLStash;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.util.Items;
 import java.time.Duration;
@@ -74,8 +75,9 @@ public final class Backups implements Listener {
             }
             create(player, SQLBackup.Type.INVENTORY, "Scheduled", result1 -> {
                     create(player, SQLBackup.Type.ENDER_CHEST, "Scheduled", result2 -> {
-                            plugin.getLogger().finest("[Backups] Finished " + player.getName()
-                                                      + ": " + result1 + ", " + result2);
+                            create(player, SQLBackup.Type.STASH, "Scheduled", result3 -> {
+                                    plugin.getLogger().finest("[Backups] Finished " + player.getName() + ": " + result1 + ", " + result2 + ", " + result3);
+                                });
                         });
                 });
             // Wait for next loop after one player!
@@ -122,9 +124,22 @@ public final class Backups implements Listener {
         case ENDER_CHEST:
             tag.setEnderChest(InventoryStorage.of(player.getEnderChest()));
             break;
+        case STASH:
+            plugin.database.find(SQLStash.class).eq("owner", player.getUniqueId()).findUniqueAsync(stashRow -> {
+                    if (stashRow == null) {
+                        callback.accept(false);
+                        return;
+                    }
+                    tag.setStash(stashRow.getInventoryStorage());
+                    SQLBackup backup = new SQLBackup(player, type, tag);
+                    backup.setComment(comment);
+                    plugin.getDatabase().insertAsync(backup, result -> callback.accept(result == 1));
+                });
+            return;
         default:
             throw new IllegalArgumentException("Backup type not implemented: " + type);
         }
+        // All except Stash arrive here
         SQLBackup backup = new SQLBackup(player, type, tag);
         backup.setComment(comment);
         plugin.getDatabase().insertAsync(backup, result -> callback.accept(result == 1));

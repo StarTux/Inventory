@@ -36,7 +36,9 @@ public final class SQLBackup implements SQLRow {
     @RequiredArgsConstructor
     public enum Type {
         INVENTORY("inv"),
-        ENDER_CHEST("end");
+        ENDER_CHEST("end"),
+        STASH("sta"),
+        ;
 
         public final String shorthand;
 
@@ -53,6 +55,7 @@ public final class SQLBackup implements SQLRow {
     public static final class Tag {
         InventoryStorage inventory;
         InventoryStorage enderChest;
+        InventoryStorage stash;
 
         public int getItemCount() {
             return 0
@@ -64,6 +67,7 @@ public final class SQLBackup implements SQLRow {
             switch (type) {
             case INVENTORY: return inventory;
             case ENDER_CHEST: return enderChest;
+            case STASH: return stash;
             default: throw new IllegalArgumentException("type=" + type);
             }
         }
@@ -87,7 +91,10 @@ public final class SQLBackup implements SQLRow {
     }
 
     public Type getTypeEnum() {
-        return Type.values()[type];
+        final var values = Type.values();
+        return type < values.length
+            ? values[type]
+            : null;
     }
 
     @Override

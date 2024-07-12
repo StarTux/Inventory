@@ -164,12 +164,10 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         plugin.backups.find(owner.uuid, list -> {
                 sender.sendMessage(text("Found: " + list.size(), YELLOW));
                 for (SQLBackup row : list) {
-                    String restoreCmd = "/inventory backup restore " + row.getId() + " " + ownerName;
+                    if (row.getTypeEnum() == null) continue;
                     String openCmd = "/inventory backup open " + row.getId();
                     sender.sendMessage(join(noSeparators(),
-                                            text("#" + row.getId(), YELLOW)
-                                            .clickEvent(ClickEvent.suggestCommand(restoreCmd))
-                                            .hoverEvent(HoverEvent.showText(text(restoreCmd, YELLOW))),
+                                            text("#" + row.getId(), YELLOW),
                                             text(" " + row.getTypeEnum().shorthand, WHITE),
                                             text(" items:" + row.getItemCount(), GRAY),
                                             text(" " + DATE_FORMAT.format(row.getCreated()), WHITE),
