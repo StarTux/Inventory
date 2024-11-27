@@ -83,7 +83,7 @@ public final class PlayerStatusStorage {
         player.setFoodLevel(foodLevel);
         player.setSaturation(saturation);
         Bukkit.getScheduler().runTaskLater(InventoryPlugin.getInstance(), () -> {
-                double max = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+                double max = player.getAttribute(Attribute.MAX_HEALTH).getValue();
                 player.setHealth(Math.max(0, Math.min(health, max)));
             }, 1L);
         if (potionEffects != null) {
