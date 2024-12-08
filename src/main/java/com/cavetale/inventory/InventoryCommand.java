@@ -6,7 +6,6 @@ import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.event.item.PlayerReceiveItemsEvent;
 import com.cavetale.core.util.Json;
-import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.mail.ItemMail;
 import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.sql.SQLBackup;
@@ -16,6 +15,7 @@ import com.cavetale.inventory.sql.SQLTrack;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.storage.ItemStorage;
 import com.cavetale.inventory.util.Items;
+import com.cavetale.mytems.util.Gui;
 import com.winthier.playercache.PlayerCache;
 import java.io.BufferedReader;
 import java.io.File;
@@ -278,7 +278,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         if (inventoryStorage == null) {
             throw new CommandWarn("Something went wrong! See console.");
         }
-        Gui gui = new Gui(plugin, Gui.Type.STASH)
+        Gui gui = new Gui(plugin)
             .title(text("Stash of " + player.name + " (copy)", RED))
             .size(inventoryStorage.getSize());
         gui.setEditable(true);
@@ -472,7 +472,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         if (args.length < 2) return false;
         PlayerCache target = PlayerCache.require(args[0]);
         Component message = text(String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
-        Gui gui = new Gui(plugin, Gui.Type.STASH)
+        Gui gui = new Gui(plugin)
             .title(text("Item Mail to " + target.name))
             .size(6 * 9);
         gui.setEditable(true);

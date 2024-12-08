@@ -11,8 +11,8 @@ import com.cavetale.core.event.item.PlayerReceiveItemsEvent;
 import com.cavetale.core.font.GuiOverlay;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.InventoryPlugin;
-import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.storage.ItemStorage;
+import com.cavetale.mytems.util.Gui;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
@@ -133,7 +133,7 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
                 }
             }
         }
-        Gui gui = new Gui(plugin, Gui.Type.MAIL)
+        Gui gui = new Gui(plugin)
             .size(SIZE)
             .title(GuiOverlay.HOLES.builder(SIZE, WHITE)
                    .layer(GuiOverlay.TITLE_BAR, GRAY)

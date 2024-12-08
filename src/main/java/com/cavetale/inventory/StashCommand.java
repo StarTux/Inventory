@@ -3,10 +3,10 @@ package com.cavetale.inventory;
 import com.cavetale.core.connect.ServerCategory;
 import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.core.util.Json;
-import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.sql.SQLStash;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.util.Items;
+import com.cavetale.mytems.util.Gui;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -41,16 +41,15 @@ public final class StashCommand implements CommandExecutor {
             player.sendMessage(text("Stash is only available in survival mode!", RED));
             return true;
         }
-        if (stashOf(player) != null) return true;
+        switch (player.getOpenInventory().getType()) {
+        case CREATIVE:
+        case CRAFTING:
+            break;
+        default: return true;
+        }
         PluginPlayerEvent.Name.OPEN_STASH.call(plugin, player);
         plugin.database.scheduleAsyncTask(() -> openStashAsync(player));
         return true;
-    }
-
-    public Gui stashOf(Player player) {
-        Gui gui = Gui.of(player);
-        if (gui == null || gui.getType() != Gui.Type.STASH) return null;
-        return gui;
     }
 
     private void openStashAsync(Player player) {
@@ -102,7 +101,7 @@ public final class StashCommand implements CommandExecutor {
         } else {
             inventoryStorage = null;
         }
-        Gui gui = new Gui(plugin, Gui.Type.STASH)
+        Gui gui = new Gui(plugin)
             .title(text("Stash"))
             .size(6 * 9);
         gui.setEditable(true);

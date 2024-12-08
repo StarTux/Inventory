@@ -1,7 +1,6 @@
 package com.cavetale.inventory;
 
 import com.cavetale.core.connect.ServerCategory;
-import com.cavetale.inventory.gui.Gui;
 import com.cavetale.inventory.mail.ItemMail;
 import com.cavetale.inventory.mail.SQLItemMail;
 import com.cavetale.inventory.mail.SQLItemMailLog;
@@ -53,7 +52,6 @@ public final class InventoryPlugin extends JavaPlugin {
         stashCommand.enable();
         openStashCommand.enable();
         dutyCommand.enable();
-        Gui.enable(this);
     }
 
     @Override
@@ -61,7 +59,6 @@ public final class InventoryPlugin extends JavaPlugin {
         if (inventoryStore != null) {
             inventoryStore.disable();
         }
-        Gui.disable(this);
         database.waitForAsyncTask();
         database.close();
     }
