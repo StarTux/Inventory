@@ -41,12 +41,6 @@ public final class StashCommand implements CommandExecutor {
             player.sendMessage(text("Stash is only available in survival mode!", RED));
             return true;
         }
-        switch (player.getOpenInventory().getType()) {
-        case CREATIVE:
-        case CRAFTING:
-            break;
-        default: return true;
-        }
         PluginPlayerEvent.Name.OPEN_STASH.call(plugin, player);
         plugin.database.scheduleAsyncTask(() -> openStashAsync(player));
         return true;
