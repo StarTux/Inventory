@@ -2,13 +2,17 @@ package com.cavetale.inventory;
 
 import com.cavetale.core.connect.ServerCategory;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import com.cavetale.core.menu.MenuItemEvent;
 import com.cavetale.core.util.Json;
 import com.cavetale.inventory.sql.SQLStash;
 import com.cavetale.inventory.storage.InventoryStorage;
 import com.cavetale.inventory.util.Items;
 import com.cavetale.mytems.util.Gui;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -25,6 +29,7 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 @RequiredArgsConstructor
 public final class StashCommand implements CommandExecutor {
     private final InventoryPlugin plugin;
+    private final Set<UUID> openStashes = new HashSet<>();
 
     public void enable() {
         plugin.getCommand("stash").setExecutor(this);
@@ -41,7 +46,12 @@ public final class StashCommand implements CommandExecutor {
             player.sendMessage(text("Stash is only available in survival mode!", RED));
             return true;
         }
+        if (openStashes.contains(player.getUniqueId())) {
+            player.sendMessage(text("Stash is already open!", RED));
+            return true;
+        }
         PluginPlayerEvent.Name.OPEN_STASH.call(plugin, player);
+        openStashes.add(player.getUniqueId());
         plugin.database.scheduleAsyncTask(() -> openStashAsync(player));
         return true;
     }
@@ -57,12 +67,14 @@ public final class StashCommand implements CommandExecutor {
                 plugin.database.insert(row);
             } catch (Exception e) {
                 Bukkit.getScheduler().runTask(plugin, () -> {
+                        openStashes.remove(player.getUniqueId());
                         player.sendMessage(text("Your stash is unavailable. Please try again later.", RED));
                     });
                 throw new IllegalStateException(row.toString(), e);
             }
             if (row.getId() == null) {
                 Bukkit.getScheduler().runTask(plugin, () -> {
+                        openStashes.remove(player.getUniqueId());
                         player.sendMessage(text("Your stash is unavailable. Please try again later.", RED));
                     });
                 throw new IllegalStateException("failed to save: " + row);
@@ -104,6 +116,10 @@ public final class StashCommand implements CommandExecutor {
             Items.give(player, drops);
         }
         gui.onClose(event -> onClose(player, row, gui));
+        gui.setItem(Gui.OUTSIDE, null, click -> {
+                if (!click.isLeftClick()) return;
+                MenuItemEvent.openMenu(player);
+            });
         gui.open(player);
         player.playSound(player.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, SoundCategory.MASTER, 0.75f, 2.0f);
     }
@@ -138,5 +154,6 @@ public final class StashCommand implements CommandExecutor {
         }
         gui.getInventory().clear();
         player.playSound(player.getLocation(), Sound.BLOCK_ENDER_CHEST_CLOSE, SoundCategory.MASTER, 0.75f, 2.0f);
+        openStashes.remove(player.getUniqueId());
     }
 }
