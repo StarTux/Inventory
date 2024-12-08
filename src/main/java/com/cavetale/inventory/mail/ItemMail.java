@@ -216,4 +216,8 @@ public final class ItemMail extends AbstractCommand<InventoryPlugin> implements 
     public static void refreshUserCache() {
         plugin().getItemMail().check();
     }
+
+    public boolean hasItemMail(Player player) {
+        return userMailCache.contains(player.getUniqueId());
+    }
 }

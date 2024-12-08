@@ -27,11 +27,15 @@ public final class InventoryPlugin extends JavaPlugin {
     protected final DutyCommand dutyCommand = new DutyCommand(this);
 
     @Override
+    public void onLoad() {
+        instance = this;
+    }
+
+    @Override
     public void onEnable() {
         if (!Bukkit.getPluginManager().isPluginEnabled("Mytems")) {
             throw new IllegalStateException("Mytems not enabled!");
         }
-        instance = this;
         database.registerTables(List.of(SQLStash.class,
                                         SQLBackup.class,
                                         SQLInventory.class,
@@ -52,6 +56,7 @@ public final class InventoryPlugin extends JavaPlugin {
         stashCommand.enable();
         openStashCommand.enable();
         dutyCommand.enable();
+        new MenuListener().enable();
     }
 
     @Override
