@@ -203,7 +203,6 @@ public final class ItemStorage {
             }
             inventory.clear();
             meta.setBlockState(container);
-            if (protoMeta instanceof BlockStateMeta mm) mm.setBlockState(container);
         }
         if (doStoreOptionalData) {
             storeOptionalData(itemMeta, protoMeta);
