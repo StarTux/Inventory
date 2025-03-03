@@ -38,6 +38,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.inventory.ItemStack;
@@ -286,6 +287,14 @@ public final class InventoryStore implements Listener {
             if (session == null) return;
             plugin.getLogger().info("[Store] Update received: " + player.getName());
             loadFromDatabase(session);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    private void onPlayerPickupItem(PlayerPickupItemEvent event) {
+        StoreSession session = sessions.get(event.getPlayer().getUniqueId());
+        if (session != null && session.loading) {
+            event.setCancelled(true);
         }
     }
 
