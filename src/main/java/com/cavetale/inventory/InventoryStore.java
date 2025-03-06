@@ -269,9 +269,9 @@ public final class InventoryStore implements Listener {
         Component message = event.getPlayer().isOp()
             ? text("Dutymode! (OP)", DARK_RED, BOLD)
             : text("Dutymode!", DARK_RED, BOLD);
-        event.bossbar(PlayerHudPriority.HIGHEST, message, BossBar.Color.RED, BossBar.Overlay.PROGRESS, 1.0f);
-        event.sidebar(PlayerHudPriority.HIGHEST, List.of(message));
-        event.footer(PlayerHudPriority.HIGHEST, List.of(message));
+        event.bossbar(PlayerHudPriority.DEFAULT, message, BossBar.Color.RED, BossBar.Overlay.PROGRESS, 1.0f);
+        event.sidebar(PlayerHudPriority.DEFAULT, List.of(message));
+        event.footer(PlayerHudPriority.DEFAULT, List.of(message));
     }
 
     /**
