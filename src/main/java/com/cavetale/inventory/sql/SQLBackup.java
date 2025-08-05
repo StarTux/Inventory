@@ -60,7 +60,8 @@ public final class SQLBackup implements SQLRow {
         public int getItemCount() {
             return 0
                 + (inventory != null ? inventory.getCount() : 0)
-                + (enderChest != null ? enderChest.getCount() : 0);
+                + (enderChest != null ? enderChest.getCount() : 0)
+                + (stash != null ? stash.getCount() : 0);
         }
 
         public InventoryStorage getInventory(Type type) {
