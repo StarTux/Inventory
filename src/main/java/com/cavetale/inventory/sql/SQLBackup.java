@@ -9,8 +9,10 @@ import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import lombok.Data;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Player;
+import static com.cavetale.core.util.CamelCase.toCamelCase;
 
 @Data @Table(name = "backup")
 public final class SQLBackup implements SQLRow {
@@ -33,6 +35,7 @@ public final class SQLBackup implements SQLRow {
 
     public SQLBackup() { }
 
+    @Getter
     @RequiredArgsConstructor
     public enum Type {
         INVENTORY("inv"),
@@ -41,6 +44,10 @@ public final class SQLBackup implements SQLRow {
         ;
 
         public final String shorthand;
+
+        public String getDisplayName() {
+            return toCamelCase(" ", this);
+        }
 
         public static Type of(String name) {
             try {

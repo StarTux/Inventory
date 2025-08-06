@@ -27,7 +27,6 @@ import java.util.Date;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -37,6 +36,7 @@ import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
+import static net.kyori.adventure.text.event.HoverEvent.showText;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.text.format.TextDecoration.*;
 
@@ -71,6 +71,11 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                         CommandArgCompleter.NULL)
             .description("Restore player inventory")
             .senderCaller(this::backupRestore);
+        backupNode.addChild("mail").arguments("<id> <player> [message...]")
+            .completers(CommandArgCompleter.integer(i -> i > 0),
+                        CommandArgCompleter.PLAYER_CACHE)
+            .description("Send backup via mail")
+            .senderCaller(this::backupMail);
         backupNode.addChild("open").arguments("<id>")
             .completers(CommandArgCompleter.integer(i -> i > 0))
             .description("Open an inventory backup")
@@ -176,7 +181,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                                              ? text(row.getComment(), GRAY, ITALIC)
                                              : empty()))
                                        .clickEvent(ClickEvent.suggestCommand(openCmd))
-                                       .hoverEvent(HoverEvent.showText(text(openCmd, YELLOW))));
+                                       .hoverEvent(showText(text(openCmd, YELLOW))));
                 }
             });
         return true;
@@ -260,6 +265,36 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                                                 + row.getItemCount() + " items, "
                                                 + dropCount + " drops", YELLOW));
                     });
+            });
+        return true;
+    }
+
+    protected boolean backupMail(CommandSender sender, String[] args) {
+        if (args.length < 2) return false;
+        final String idString = args[0];
+        final String playerName = args[1];
+        final String message = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+        final int id = CommandArgCompleter.requireInt(idString, i -> i > 0);
+        final PlayerCache target = PlayerCache.require(playerName);
+        plugin.backups.find(id, row -> {
+                if (row == null) {
+                    sender.sendMessage(text("Backup not found: #" + id, RED));
+                    return;
+                }
+                final SQLBackup.Tag tag = row.deserialize();
+                final InventoryStorage storage = tag.getInventory(row.getTypeEnum());
+                final Inventory inv = storage.toInventory();
+                if (ItemMail.send(target.uuid, inv, text(message))) {
+                    sender.sendMessage(text("Backup of " + row.getTypeEnum().getDisplayName()
+                                            + " mailed to " + target.name + ": " + row.getId()
+                                            + ", " + storage.getCount() + " items", YELLOW)
+                                       .hoverEvent(showText(text(row.getId(), GRAY)))
+                                       .insertion("" + row.getId()));
+                } else {
+                    sender.sendMessage(text("Inventory empty, nothing was sent: " + row.getId(), RED)
+                                       .hoverEvent(showText(text(row.getId(), GRAY)))
+                                       .insertion("" + row.getId()));
+                }
             });
         return true;
     }
@@ -368,7 +403,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                         sender.sendMessage(join(noSeparators(),
                                                 (text("#" + row.getId(), YELLOW)
                                                  .clickEvent(ClickEvent.suggestCommand(deliverCmd))
-                                                 .hoverEvent(HoverEvent.showText(text(deliverCmd, YELLOW)))),
+                                                 .hoverEvent(showText(text(deliverCmd, YELLOW)))),
                                                 text(" tr:", GRAY),
                                                 text(row.getTrack(), WHITE),
                                                 text(" i:", GRAY),
@@ -380,7 +415,7 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
                                                  ? text(DATE_FORMAT.format(row.getCreated()), WHITE)
                                                  : text("NO", DARK_RED)))
                                            .clickEvent(ClickEvent.suggestCommand(openCmd))
-                                           .hoverEvent(HoverEvent.showText(text(openCmd, YELLOW))));
+                                           .hoverEvent(showText(text(openCmd, YELLOW))));
                     }
                 });
         return true;
