@@ -62,8 +62,9 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
         // Backup
         CommandNode backupNode = rootNode.addChild("backup")
             .description("Backup commands");
-        backupNode.addChild("list").arguments("<player>")
-            .completers(CommandArgCompleter.NULL)
+        backupNode.addChild("list").arguments("<player> [type]")
+            .completers(CommandArgCompleter.PLAYER_CACHE,
+                        CommandArgCompleter.enumLowerList(SQLBackup.Type.class))
             .description("List player inventory backups")
             .senderCaller(this::backupList);
         backupNode.addChild("restore").arguments("<id> <player>")
@@ -162,14 +163,19 @@ public final class InventoryCommand extends AbstractCommand<InventoryPlugin> {
     }
 
     protected boolean backupList(CommandSender sender, String[] args) {
-        if (args.length != 1) return false;
-        String ownerName = args[0];
-        PlayerCache owner = PlayerCache.forArg(args[0]);
+        if (args.length != 1 && args.length != 2) return false;
+        final String ownerName = args[0];
+        final String typeArg = args.length >= 2 ? args[1] : null;
+        final PlayerCache owner = PlayerCache.forArg(ownerName);
+        final SQLBackup.Type type = typeArg != null
+            ? CommandArgCompleter.requireEnum(SQLBackup.Type.class, typeArg)
+            : null;
         if (owner == null) throw new CommandWarn("Player not found: " + ownerName);
         plugin.backups.find(owner.uuid, list -> {
                 sender.sendMessage(text("Found: " + list.size(), YELLOW));
                 for (SQLBackup row : list) {
                     if (row.getTypeEnum() == null) continue;
+                    if (type != null && type != row.getTypeEnum()) continue;
                     String openCmd = "/inventory backup open " + row.getId();
                     sender.sendMessage(join(noSeparators(),
                                             text("#" + row.getId(), YELLOW),
