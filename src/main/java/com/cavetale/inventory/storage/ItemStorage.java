@@ -167,6 +167,7 @@ public final class ItemStorage {
 
     private Material parseBukkitMaterial() {
         if ("grass".equals(bukkit)) return Material.SHORT_GRASS;
+        if ("chain".equals(bukkit)) return Material.IRON_CHAIN;
         try {
             return Material.valueOf(bukkit.toUpperCase());
         } catch (IllegalArgumentException iae) {
